@@ -1,0 +1,1013 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Эшелон</title>
+<meta name="theme-color" content="#0a1230">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Manrope:wght@400;600;700;800&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: phone-only, one screen, no page scroll (Telegram Mini App). Top bar with stats and pause, thin core meter, the map fills the free height, then the next-wave strip with the start button, the solutions dock and a one-line hint. Reference (solutions/threats) opens as a bottom sheet. Every threat shares its colour with the solution that stops it. Single dark look: the logo wordmark is white. */
+:root{
+  --bg:#0a1230;--surface:#101a40;--surface2:#16245a;--line:#22306a;--fg:#eef2ff;--muted:#93a0cf;
+  --threat:#ff8f0c;--good:#affb33;--core:#2176ff;
+  --font-display:"Unbounded","Arial Black",sans-serif;
+  --font-body:"Manrope",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+  --app-h:100vh;
+  --pt:calc(env(safe-area-inset-top,0px) + var(--tg-content-safe-area-inset-top,0px));
+  --pb:calc(env(safe-area-inset-bottom,0px) + var(--tg-content-safe-area-inset-bottom,0px));
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0;overflow:hidden;overscroll-behavior:none;background:var(--bg)}
+body{color:var(--fg);font-family:var(--font-body);font-size:14px;line-height:1.45;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none}
+button{font:inherit;color:inherit;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.app{height:var(--app-h);display:flex;flex-direction:column;gap:6px;padding:calc(var(--pt) + 8px) max(10px,env(safe-area-inset-right,0px)) calc(var(--pb) + 8px) max(10px,env(safe-area-inset-left,0px))}
+
+.top{display:flex;align-items:center;gap:8px;flex:none}
+.logo{height:22px;width:auto;display:block;flex:none}
+.stats{display:flex;gap:12px;flex:1;min-width:0;justify-content:flex-end}
+.st{display:flex;flex-direction:column;line-height:1.1;min-width:0}
+.st .k{font-family:var(--font-mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.st .v{font-family:var(--font-display);font-weight:700;font-size:15px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.ib{flex:none;width:38px;height:38px;display:grid;place-items:center;background:var(--surface);border:1px solid var(--line);border-radius:8px;cursor:pointer;font-weight:800;font-size:15px}
+.ib[aria-pressed="true"]{border-color:var(--good);color:var(--good)}
+.ib[disabled]{opacity:.35}
+
+.meter{display:flex;align-items:center;gap:8px;flex:none;font-size:11px;color:var(--muted)}
+.meter b{font-family:var(--font-mono);font-weight:500;color:var(--fg);font-variant-numeric:tabular-nums;min-width:36px;text-align:right}
+.track{flex:1;height:6px;background:var(--surface);border:1px solid var(--line);border-radius:3px;overflow:hidden}
+.fill{height:100%;width:100%;background:var(--good);transition:width .25s ease,background-color .25s ease}
+.fill.low{background:var(--threat)}
+
+.stage{flex:1;min-height:0;display:flex;align-items:center;justify-content:center}
+.field{position:relative;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--bg);width:300px;height:400px}
+canvas{display:block;width:100%;height:100%;touch-action:none}
+
+.wavebar{display:flex;gap:6px;flex:none;height:46px}
+.next{flex:1;min-width:0;display:flex;align-items:center;gap:8px;overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:0 8px;scrollbar-width:none;cursor:pointer}
+.next::-webkit-scrollbar{display:none}
+.next .nl{font-family:var(--font-mono);font-size:10px;color:var(--muted);white-space:nowrap}
+.nchip{display:flex;align-items:center;gap:3px;font-family:var(--font-mono);font-size:11px;white-space:nowrap}
+.nchip.new{color:var(--good)}
+.btn{appearance:none;border:0;cursor:pointer;background:var(--good);color:var(--bg);font-family:var(--font-display);font-weight:700;font-size:13px;letter-spacing:.01em;padding:12px 18px;border-radius:8px}
+.btn:active{transform:translateY(1px)}
+.btn[disabled]{opacity:.45}
+.btn.ghost{background:transparent;color:var(--fg);border:1px solid var(--line)}
+#wavebtn{flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:0 12px;font-size:12px;line-height:1.15;min-width:104px}
+#wavebtn .sb{font-family:var(--font-mono);font-weight:500;font-size:10px;opacity:.85}
+#speed{flex:none;width:46px;padding:0;font-size:12px}
+#speed[aria-pressed="true"]{border-color:var(--good);color:var(--good)}
+
+.dock{display:flex;gap:6px;overflow-x:auto;flex:none;scroll-snap-type:x proximity;scrollbar-width:none;padding-bottom:1px}
+.dock::-webkit-scrollbar{display:none}
+.tw{flex:0 0 58px;height:54px;scroll-snap-align:start;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:var(--surface);border:1px solid var(--line);border-bottom:3px solid var(--pc);border-radius:8px;padding:0 2px}
+.tw .a{font-weight:800;font-size:12px;line-height:1}
+.tw .c{font-family:var(--font-mono);font-size:10px;color:var(--good);line-height:1}
+.tw.poor .c{color:var(--threat)}
+.tw .d{width:8px;height:8px;border-radius:50%;background:var(--pc)}
+.tw[aria-pressed="true"]{background:var(--pc);color:var(--bg);border-color:var(--pc)}
+.tw[aria-pressed="true"] .c{color:var(--bg)}
+.tw[aria-pressed="true"] .d{background:var(--bg)}
+
+.hint{flex:none;min-height:34px;display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);line-height:1.3}
+.hint b{color:var(--fg)}
+.hint .dot{flex:none;width:10px;height:10px;border-radius:50%}
+.hint .tx{flex:1;min-width:0}
+.hint .more{flex:none;appearance:none;border:1px solid var(--line);background:transparent;border-radius:6px;padding:6px 10px;font-size:12px;font-weight:700;cursor:pointer}
+
+.pop{position:absolute;z-index:3;width:max-content;max-width:calc(100% - 8px);background:rgba(10,18,48,.97);border:1px solid var(--good);border-radius:8px;padding:8px 10px;display:flex;flex-direction:column;gap:6px;box-shadow:0 6px 20px rgba(0,0,0,.45)}
+.pop-h{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
+.pop-h b{font-weight:800;font-size:13px}
+.pop-x{margin-left:auto;appearance:none;border:0;background:transparent;color:var(--muted);font-size:20px;line-height:1;cursor:pointer;padding:0 4px}
+.pop-s{font-size:11px;color:var(--muted);font-family:var(--font-mono)}
+.pop-b{display:flex;gap:6px;flex-wrap:wrap}
+.mini{appearance:none;cursor:pointer;border:1px solid var(--line);background:transparent;color:var(--fg);font-weight:700;font-size:12px;padding:9px 11px;border-radius:6px}
+.mini.up{background:var(--good);color:var(--bg);border-color:var(--good)}
+.mini[disabled]{opacity:.4}
+
+.overlay{position:fixed;inset:0;z-index:10;overflow-y:auto;-webkit-overflow-scrolling:touch;background:rgba(10,18,48,.96);padding:calc(var(--pt) + 18px) 16px calc(var(--pb) + 18px);display:flex;flex-direction:column;-webkit-user-select:text;user-select:text}
+.ov{margin:auto;width:100%;max-width:440px;display:flex;flex-direction:column;gap:12px}
+.ov.mid{align-items:center;text-align:center}
+.ov .logo{height:30px;align-self:center}
+.ov h2{margin:0;font-family:var(--font-display);font-weight:700;font-size:21px;line-height:1.2;text-wrap:balance}
+.ov p{margin:0;color:var(--muted);font-size:13px}
+.ov p b{color:var(--fg)}
+.lbl{font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.opts{display:flex;flex-direction:column;gap:6px;width:100%}
+.opt{appearance:none;cursor:pointer;text-align:left;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:9px 11px;display:flex;flex-direction:column;gap:2px;min-width:0;width:100%}
+.opt b{font-size:13px}
+.opt span{font-size:11px;color:var(--muted);line-height:1.35}
+.opt .st2{font-family:var(--font-mono);font-size:11px;color:var(--good)}
+.opt[aria-pressed="true"]{border-color:var(--good);background:var(--surface2)}
+.diff{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;width:100%}
+.diff .opt{align-items:center;text-align:center;padding:8px 4px}
+.acts{display:flex;flex-direction:column;gap:8px;width:100%}
+.acts .btn{width:100%;padding:14px 16px}
+.stars{font-size:28px;letter-spacing:5px;color:var(--good);line-height:1}
+.stars i{font-style:normal;color:var(--line)}
+.rep{display:grid;grid-template-columns:1fr auto;gap:4px 14px;margin:0;width:100%;font-size:13px;text-align:left}
+.rep dt{color:var(--muted)}
+.rep dd{margin:0;font-family:var(--font-mono);font-size:12px;text-align:right;font-variant-numeric:tabular-nums}
+.recs{display:flex;flex-direction:column;gap:8px;width:100%;text-align:left}
+.rec{border-left:3px solid var(--pc);background:var(--surface);padding:10px 12px;border-radius:6px;font-size:13px;color:var(--muted);line-height:1.45}
+.rec b{color:var(--fg)}
+.rec .pz{display:block;margin-top:6px;color:var(--fg)}
+.site{color:var(--good);font-weight:700}
+
+.sheet-bg{position:fixed;inset:0;z-index:20;background:rgba(0,0,0,.5)}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:21;max-height:82%;display:flex;flex-direction:column;background:var(--bg);border-top:1px solid var(--line);border-radius:14px 14px 0 0;padding:10px 12px calc(var(--pb) + 12px)}
+.sh-top{display:flex;align-items:center;gap:6px;flex:none;margin-bottom:8px}
+.tab{appearance:none;cursor:pointer;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 14px;font-weight:700;font-size:13px}
+.tab[aria-selected="true"]{border-color:var(--good);color:var(--good)}
+.sh-x{margin-left:auto}
+.sh-body{overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;gap:8px;-webkit-user-select:text;user-select:text}
+.card{display:flex;gap:10px;align-items:flex-start;background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--pc);border-radius:8px;padding:10px 12px}
+.card.off{opacity:.5}
+.card.focus{border-color:var(--good);border-left-color:var(--pc)}
+.card .body{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
+.card .hd{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.card .nm{font-weight:800;font-size:13px}
+.card .cost{font-family:var(--font-mono);font-size:12px;color:var(--good);white-space:nowrap}
+.card .ds{font-size:12px;color:var(--muted);line-height:1.4}
+.card .gm{font-size:12px;color:var(--good);line-height:1.4}
+.card .vs{display:flex;align-items:center;gap:6px;font-size:12px}
+.badge{font-family:var(--font-mono);font-size:11px;white-space:nowrap;color:var(--muted)}
+.badge.new{color:var(--bg);background:var(--good);padding:1px 6px;border-radius:3px;font-size:10px}
+.sq{flex:none;width:40px;height:30px;border-radius:6px;background:var(--surface2);border:2px solid var(--pc);display:grid;place-items:center;font-weight:800;font-size:10px;white-space:nowrap;overflow:hidden}
+.ico{flex:none;display:block}
+@media (prefers-reduced-motion:reduce){.fill{transition:none}}
+</style>
+
+</head>
+<body>
+<div class="app" id="app">
+  <div class="top">
+    <svg class="logo" role="img" aria-label="Puzzle Systems" viewBox="0 0 498 165" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M0.150005 132.408C0.150005 121.83 7.94225 113.36 18.5954 112.814C27.517 112.362 35.648 110.122 42.8003 104.495C59.7212 91.1501 60.8693 64.7995 45.0966 49.9679C38.189 43.4743 30.0203 40.2746 20.5717 39.8982C12.3466 39.5782 5.81538 36.0585 2.14512 28.4921C-1.33692 21.3398 -0.50876 14.3005 4.14024 7.78809C8.48808 1.70863 16.9015 -1.26522 24.4867 0.541676C32.053 2.34857 38.1137 8.63507 39.2995 15.9191C40.1653 21.1892 40.3347 26.6852 42.0474 31.6542C46.5459 44.7354 55.9568 52.697 69.5838 55.4074C72.9717 56.085 76.4914 56.1414 79.8982 56.7625C87.5022 58.1554 92.6029 62.7667 95.0121 69.9378C97.5531 77.5042 95.8403 84.393 90.2878 90.209C86.2223 94.4815 81.0463 96.0814 75.3621 96.1379C59.0436 96.3073 43.1956 108.579 40.2594 127.1C39.77 130.168 39.9017 133.349 39.2995 136.379C37.342 146.336 28.0252 153.281 18.2378 152.302C7.77285 151.248 0.150005 142.873 0.150005 132.408Z" fill="#FF8F0C"/><path d="M19.5937 56.6497C30.5857 56.6497 39.1121 65.2137 39.0933 76.2622C39.0933 87.066 30.4352 95.743 19.6313 95.7618C8.75223 95.7806 0 87.0472 0 76.2057C0 65.2513 8.6393 56.6497 19.5937 56.6309V56.6497Z" fill="#AFFB33"/><path d="M133.035 113.282C144.027 113.282 152.554 121.847 152.535 132.895C152.535 143.699 143.877 152.376 133.073 152.395C122.194 152.413 113.441 143.68 113.441 132.839C113.441 121.884 122.081 113.282 133.035 113.264V113.282Z" fill="#2176FF"/><path d="M136.234 56.7621C132.827 56.1409 129.326 56.0845 125.919 55.4069C112.292 52.6777 102.881 44.7349 98.3829 31.6537C97.837 30.035 98.3829 28.2658 99.7757 27.2682C102.561 25.2355 106.326 25.179 109.187 27.0988L120.48 34.684L120.913 35.004C124.244 37.6014 128.46 39.1448 133.034 39.1448C143.819 39.126 152.477 30.4491 152.496 19.6454C152.515 8.57812 143.988 0.0141738 133.015 0.0141738C128.328 0.0141738 124.075 1.59521 120.724 4.24909L109.262 12.399C106.382 14.4505 102.524 14.4317 99.6628 12.3425L88.5767 4.28673C86.3369 2.51748 83.7018 1.19995 80.8409 0.522364C73.2557 -1.28453 64.8423 1.70814 60.5133 7.76878C55.8455 14.2811 55.0173 21.3205 58.5182 28.5105C62.1885 36.0768 68.7196 39.5965 76.9448 39.9165C86.3934 40.2741 94.562 43.4927 101.47 49.9862C117.242 64.8178 116.094 91.1496 99.1734 104.513C92.0211 110.16 83.9089 112.381 74.9685 112.832C64.3153 113.378 56.5231 121.829 56.5231 132.426C56.5231 142.891 64.1459 151.267 74.6109 152.321C84.3982 153.299 93.7151 146.354 95.6725 136.397C96.2748 133.367 96.1431 130.186 96.6324 127.118C99.5687 108.579 115.417 96.3068 131.735 96.1562C137.438 96.0997 142.595 94.4999 146.661 90.2273C152.213 84.3925 153.926 77.5037 151.385 69.9562C148.976 62.7851 143.875 58.1737 136.271 56.7809L136.234 56.7621Z" fill="#2176FF"/><path d="M210.088 57.2389V95.1523H200.584V61.3841L204.932 65.681H175.915L180.212 61.3841V95.1523H170.658V57.2389H210.088ZM224.331 87.5191V79.8353H250.517V87.5191H224.331ZM243.844 57.2389L261.335 95.1523H251.174L236.16 61.2325H239.092L224.129 95.1523H213.968L231.459 57.2389H243.844ZM281.007 95.9612C277.064 95.9612 273.61 95.4051 270.644 94.293C267.678 93.1808 265.37 91.6138 263.719 89.5917C262.067 87.536 261.174 85.1432 261.039 82.4134H270.593C270.863 84.4018 271.874 85.9352 273.627 87.0136C275.379 88.0583 277.839 88.5807 281.007 88.5807C283.973 88.5807 286.264 88.1594 287.882 87.3169C289.533 86.4744 290.359 85.2106 290.359 83.5256C290.359 82.0764 289.668 81.0148 288.286 80.3408C286.905 79.6668 284.664 79.3298 281.563 79.3298H274.435V72.9603H281.411C283.265 72.9603 284.782 72.775 285.961 72.4043C287.141 72.0336 288.017 71.5112 288.59 70.8372C289.163 70.1295 289.449 69.3544 289.449 68.5118C289.449 67.5008 289.112 66.6414 288.438 65.9337C287.764 65.226 286.804 64.7036 285.557 64.3666C284.31 63.9959 282.81 63.8106 281.058 63.8106C278.193 63.8106 275.918 64.3329 274.233 65.3777C272.582 66.3887 271.605 67.821 271.301 69.6745H261.848C262.017 67.2144 262.876 64.9901 264.426 63.0017C266.01 61.0134 268.234 59.4295 271.099 58.2499C273.964 57.0367 277.435 56.4301 281.513 56.4301C285.085 56.4301 288.185 56.885 290.814 57.795C293.443 58.7049 295.482 59.9518 296.931 61.5358C298.414 63.1197 299.155 64.9564 299.155 67.0458C299.155 68.7646 298.633 70.3485 297.588 71.7977C296.577 73.2468 294.976 74.3926 292.785 75.2351C290.629 76.0777 287.831 76.4821 284.394 76.4484V75.4374C287.663 75.2689 290.46 75.5048 292.785 76.1451C295.145 76.7517 296.948 77.729 298.194 79.077C299.475 80.4251 300.115 82.1438 300.115 84.2333C300.115 86.5249 299.374 88.5638 297.891 90.35C296.408 92.1024 294.235 93.4842 291.37 94.4952C288.539 95.4725 285.085 95.9612 281.007 95.9612ZM311.551 57.2389H347.999V95.1523H338.444V61.3841L342.741 65.681H316.859L320.903 62.4962C321.139 64.8553 321.307 67.1132 321.409 69.2701C321.543 71.3933 321.611 73.4153 321.611 75.3363C321.611 80.1555 321.173 84.0816 320.296 87.1147C319.454 90.1141 318.106 92.3383 316.252 93.7875C314.432 95.2029 312.057 95.9106 309.125 95.9106C307.878 95.9106 306.648 95.7758 305.434 95.5062C304.221 95.2366 303.126 94.849 302.149 94.3435V86.407C303.631 86.9799 304.996 87.2663 306.243 87.2663C308.501 87.2663 310.119 86.2385 311.096 84.1827C312.107 82.0933 312.613 78.6895 312.613 73.9714C312.613 71.7471 312.528 69.2533 312.36 66.4898C312.191 63.6926 311.922 60.609 311.551 57.2389Z" fill="white"/><path d="M212.262 135.517C211.891 138.786 210.762 141.667 208.875 144.161C206.988 146.621 204.494 148.542 201.393 149.924C198.293 151.305 194.754 151.996 190.777 151.996C186.43 151.996 182.605 151.171 179.302 149.519C176.033 147.868 173.489 145.559 171.669 142.594C169.849 139.628 168.939 136.174 168.939 132.231C168.939 128.288 169.849 124.833 171.669 121.868C173.489 118.902 176.033 116.594 179.302 114.942C182.605 113.291 186.43 112.465 190.777 112.465C194.754 112.465 198.293 113.156 201.393 114.538C204.494 115.92 206.988 117.841 208.875 120.301C210.762 122.761 211.891 125.642 212.262 128.945H202.657C202.32 127.226 201.629 125.76 200.584 124.547C199.573 123.334 198.225 122.407 196.54 121.767C194.889 121.093 192.968 120.756 190.777 120.756C188.25 120.756 186.076 121.227 184.256 122.171C182.436 123.081 181.038 124.395 180.061 126.114C179.083 127.833 178.595 129.872 178.595 132.231C178.595 134.59 179.083 136.629 180.061 138.347C181.038 140.066 182.436 141.397 184.256 142.341C186.076 143.251 188.25 143.706 190.777 143.706C192.968 143.706 194.889 143.386 196.54 142.745C198.225 142.105 199.573 141.178 200.584 139.965C201.629 138.752 202.32 137.269 202.657 135.517H212.262ZM217.606 151.188V113.274H227.008V146.233L224.228 145.677L246.976 113.274H259.411V151.188H250.059V117.672L252.789 118.228L229.738 151.188H217.606ZM308.378 135.517C308.007 138.786 306.878 141.667 304.991 144.161C303.104 146.621 300.61 148.542 297.51 149.924C294.409 151.305 290.871 151.996 286.894 151.996C282.546 151.996 278.721 151.171 275.419 149.519C272.15 147.868 269.605 145.559 267.786 142.594C265.966 139.628 265.056 136.174 265.056 132.231C265.056 128.288 265.966 124.833 267.786 121.868C269.605 118.902 272.15 116.594 275.419 114.942C278.721 113.291 282.546 112.465 286.894 112.465C290.871 112.465 294.409 113.156 297.51 114.538C300.61 115.92 303.104 117.841 304.991 120.301C306.878 122.761 308.007 125.642 308.378 128.945H298.773C298.436 127.226 297.746 125.76 296.701 124.547C295.69 123.334 294.342 122.407 292.657 121.767C291.005 121.093 289.084 120.756 286.894 120.756C284.366 120.756 282.193 121.227 280.373 122.171C278.553 123.081 277.154 124.395 276.177 126.114C275.2 127.833 274.711 129.872 274.711 132.231C274.711 134.59 275.2 136.629 276.177 138.347C277.154 140.066 278.553 141.397 280.373 142.341C282.193 143.251 284.366 143.706 286.894 143.706C289.084 143.706 291.005 143.386 292.657 142.745C294.342 142.105 295.69 141.178 296.701 139.965C297.746 138.752 298.436 137.269 298.773 135.517H308.378ZM324.172 117.47H333.726V151.188H324.172V117.47ZM309.411 113.274H348.487V121.716H309.411V113.274ZM384.965 128.692V135.769H357.516V128.692H384.965ZM363.986 132.231L361.459 147.902L357.465 143.403H386.583V151.188H351.904L354.836 132.231L351.904 113.274H386.33V121.059H357.465L361.459 116.56L363.986 132.231ZM447.199 113.274V151.188H438.1V116.61L440.324 116.762L424.906 151.188H415.15L399.731 116.863L401.956 116.661V151.188H392.856V113.274H407.567L421.974 146.436H418.132L432.489 113.274H447.199ZM496.168 135.517C495.797 138.786 494.669 141.667 492.781 144.161C490.894 146.621 488.4 148.542 485.3 149.924C482.199 151.305 478.661 151.996 474.684 151.996C470.336 151.996 466.511 151.171 463.209 149.519C459.94 147.868 457.395 145.559 455.576 142.594C453.756 139.628 452.846 136.174 452.846 132.231C452.846 128.288 453.756 124.833 455.576 121.868C457.395 118.902 459.94 116.594 463.209 114.942C466.511 113.291 470.336 112.465 474.684 112.465C478.661 112.465 482.199 113.156 485.3 114.538C488.4 115.92 490.894 117.841 492.781 120.301C494.669 122.761 495.797 125.642 496.168 128.945H486.563C486.226 127.226 485.536 125.76 484.491 124.547C483.48 123.334 482.132 122.407 480.447 121.767C478.795 121.093 476.874 120.756 474.684 120.756C472.156 120.756 469.983 121.227 468.163 122.171C466.343 123.081 464.944 124.395 463.967 126.114C462.99 127.833 462.501 129.872 462.501 132.231C462.501 134.59 462.99 136.629 463.967 138.347C464.944 140.066 466.343 141.397 468.163 142.341C469.983 143.251 472.156 143.706 474.684 143.706C476.874 143.706 478.795 143.386 480.447 142.745C482.132 142.105 483.48 141.178 484.491 139.965C485.536 138.752 486.226 137.269 486.563 135.517H496.168Z" fill="white"/></svg>
+    <div class="stats">
+      <div class="st"><span class="k">Волна</span><span class="v" id="wave">—</span></div>
+      <div class="st"><span class="k">Бюджет</span><span class="v" id="money">0</span></div>
+      <div class="st"><span class="k">До волны</span><span class="v" id="timer">—</span></div>
+    </div>
+    <button class="ib" id="helpbtn" type="button" aria-label="Справочник решений и угроз">?</button>
+    <button class="ib" id="pausebtn" type="button" aria-label="Пауза" disabled><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><rect x="2" y="1" width="3.5" height="12" rx="1" fill="currentColor"/><rect x="8.5" y="1" width="3.5" height="12" rx="1" fill="currentColor"/></svg></button>
+  </div>
+  <div class="meter"><span>Ядро</span><div class="track"><div class="fill" id="intFill"></div></div><b id="intText">100%</b></div>
+
+  <div class="stage" id="stage">
+    <div class="field" id="fieldbox">
+      <canvas id="field" aria-label="Карта обороны"></canvas>
+      <div class="pop" id="pop" role="dialog" aria-label="Управление решением" hidden></div>
+    </div>
+  </div>
+
+  <div class="wavebar">
+    <div class="next" id="next" role="button" aria-label="Состав следующей волны"></div>
+    <button class="btn" id="wavebtn" type="button" disabled>Волна 1</button>
+    <button class="btn ghost" id="speed" type="button" aria-pressed="false" aria-label="Скорость игры">×1</button>
+  </div>
+  <div class="dock" id="dock" role="group" aria-label="Решения"></div>
+  <div class="hint" id="hint"></div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="ov mid" id="ov">
+    <h2>Эшелон</h2>
+    <noscript><p style="color:var(--threat)">Игра не запускается: скрипты отключены. Откройте её в Telegram или в обычном браузере.</p></noscript>
+  </div>
+</div>
+
+<div class="sheet-bg" id="sheetbg" hidden></div>
+<div class="sheet" id="sheet" role="dialog" aria-label="Справочник" hidden>
+  <div class="sh-top">
+    <button class="tab" id="tab-sol" type="button" role="tab" aria-selected="true">Решения</button>
+    <button class="tab" id="tab-thr" type="button" role="tab" aria-selected="false">Угрозы</button>
+    <button class="ib sh-x" id="sheetx" type="button" aria-label="Закрыть">×</button>
+  </div>
+  <div class="sh-body" id="sheetbody"></div>
+</div>
+
+<script>
+(function(){
+  var COLS=12,ROWS=16,CS=40,W=480,H=640;
+  var C={navy:'#0a1230',ink:'#eef2ff',muted:'#93a0cf',lime:'#AFFB33',orange:'#FF8F0C',blue:'#2176FF',deep:'#13204d',boss:'#F472D0'};
+  var SITE='https://puzzle.systems/';
+  var tg=(window.Telegram&&window.Telegram.WebApp)||null;
+  var cv=document.getElementById('field'),ctx=cv.getContext('2d');
+  var calm=!!(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  function $(id){return document.getElementById(id);}
+  var dpr=Math.min(window.devicePixelRatio||1,2);
+  cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);
+
+  // ---------- Telegram ----------
+  function T(fn){try{if(tg)fn(tg);}catch(e){}}
+  function goHome(){location.href='index.html';}
+  T(function(t){t.ready();t.expand();if(t.disableVerticalSwipes)t.disableVerticalSwipes();if(t.setHeaderColor)t.setHeaderColor('#0a1230');if(t.setBackgroundColor)t.setBackgroundColor('#0a1230');if(t.setBottomBarColor)t.setBottomBarColor('#0a1230');});
+  var lastBuzz=0;
+  function haptic(kind){T(function(t){if(!t.HapticFeedback)return;var now=Date.now();if(kind==='hit'){if(now-lastBuzz<350)return;lastBuzz=now;t.HapticFeedback.impactOccurred('heavy');}else if(kind==='ok')t.HapticFeedback.notificationOccurred('success');else if(kind==='bad')t.HapticFeedback.notificationOccurred('error');else t.HapticFeedback.impactOccurred('light');});}
+  function openSite(e){if(tg&&tg.openLink){if(e)e.preventDefault();try{tg.openLink(SITE);}catch(x){window.open(SITE,'_blank');}}}
+  document.addEventListener('click',function(e){var a=e.target.closest&&e.target.closest('a.site');if(a)openSite(e);});
+
+  // ---------- data ----------
+  var TH={
+    cred:{name:'Кража учётных данных',col:'#6EE7B7',hp:30,spd:58,rew:6,dmg:4,r:12,
+      desc:'Злоумышленник получает логин и пароль сотрудника и использует их для доступа к корпоративным системам.',
+      trait:'Самая частая угроза: приходит много и быстро.',
+      need:'улучшить управление учётными записями и правами доступа',help:'в этом поможет IDM',
+      icon:'M15.5 7.5a3.5 3.5 0 1 1-7 0a3.5 3.5 0 1 1 7 0M12 11v10M12 15.5h3.5M12 18.5h2.5'},
+    priv:{name:'Злоупотребление привилегиями',col:'#A78BFA',hp:50,spd:54,rew:13,dmg:7,r:12,hidden:true,
+      desc:'Злоумышленник использует скомпрометированную учётную запись администратора для изменения настроек или получения доступа к конфиденциальным данным.',
+      trait:'Невидима. Её видит PAM, а остальные решения — только в зоне SIEM.',
+      need:'улучшить контроль привилегированного доступа и действий администраторов',help:'в этом поможет PAM',
+      icon:'M4 17l2-9 4 4 2-6 2 6 4-4 2 9zM4 20h16'},
+    brute:{name:'Brute Force (перебор паролей)',col:'#FF4D5E',hp:16,spd:78,rew:4,dmg:2,r:10,pack:4,gap:.16,
+      desc:'Злоумышленник многократно пытается подобрать пароль для получения доступа к системе.',
+      trait:'Идёт серией из четырёх быстрых попыток подряд.',
+      need:'улучшить мониторинг событий информационной безопасности и выявление подозрительной активности',help:'в этом поможет SIEM',
+      icon:'M6 11h12v9H6zM8 11V8a4 4 0 0 1 8 0v3M9 15.5h.01M12 15.5h.01M15 15.5h.01'},
+    ransom:{name:'Ransomware (атака с использованием шифровальщика)',col:'#D6A36A',hp:80,spd:44,rew:12,dmg:7,r:13,
+      desc:'Вредоносная программа шифрует файлы и требует выкуп за их восстановление.',
+      trait:'Отключает решения, мимо которых проходит, на 4 секунды. Решения в зоне EDR защищены.',
+      need:'улучшить защиту рабочих станций и серверов от вредоносного ПО',help:'в этом поможет EDR',
+      icon:'M7 3h7l4 4v14H7zM14 3v4h4M10 14h5v4h-5zM11 14v-1.5a1.5 1.5 0 0 1 3 0V14'},
+    leak:{name:'Утечка данных',col:'#FFD43B',hp:95,spd:38,rew:11,dmg:7,r:13,incident:true,
+      desc:'Конфиденциальная информация передаётся посторонним лицам или на внешние ресурсы без разрешения.',
+      trait:'Медленная, но очень живучая.',
+      need:'улучшить контроль передачи конфиденциальной информации',help:'в этом поможет DLP',
+      icon:'M12 3c4 5 6.5 8.2 6.5 11.5a6.5 6.5 0 0 1-13 0C5.5 11.2 8 8 12 3z'},
+    sql:{name:'SQL-инъекция',col:'#FF8F0C',hp:26,spd:66,rew:6,dmg:4,r:12,
+      desc:'Злоумышленник внедряет вредоносный SQL-код в запрос к веб-приложению, чтобы получить доступ к данным или изменить их.',
+      trait:'Быстрая и частая атака на веб-приложения.',
+      need:'улучшить защиту веб-приложений от вредоносных запросов',help:'в этом поможет WAF',
+      icon:'M4 6c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3zM4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3'},
+    scan:{name:'Сканирование портов',col:'#93C5FD',hp:40,spd:74,rew:8,dmg:4,r:11,
+      desc:'Злоумышленник проверяет сетевые устройства на наличие открытых портов и уязвимых сервисов для поиска точек проникновения.',
+      trait:'Самая быстрая угроза. NGFW замедляет её.',
+      need:'улучшить контроль сетевого трафика и ограничение несанкционированных соединений',help:'в этом поможет NGFW',
+      icon:'M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18M12 7a5 5 0 1 0 0 10a5 5 0 1 0 0-10M12 12l6-6'},
+    lateral:{name:'Боковое перемещение (Lateral Movement)',col:'#F0ABFC',hp:60,spd:50,rew:12,dmg:7,r:12,mid:true,
+      desc:'Получив доступ к одному устройству, злоумышленник пытается проникнуть в другие системы корпоративной сети.',
+      trait:'Появляется не на входе, а у заражённого узла посреди маршрута.',
+      need:'улучшить мониторинг внутреннего сетевого трафика и выявление аномальной активности',help:'в этом поможет NAD',
+      icon:'M3 12h18M15 6l6 6-6 6M9 6l-6 6 6 6'},
+    container:{name:'Эксплуатация уязвимостей контейнера',col:'#F8FAFC',hp:48,spd:50,rew:10,dmg:6,r:12,split:true,
+      desc:'Злоумышленник использует уязвимость программного компонента контейнера для выполнения вредоносного кода или получения доступа к инфраструктуре.',
+      trait:'Если уничтожить её не Container Security, распадается на две копии.',
+      need:'улучшить контроль безопасности контейнерной инфраструктуры и проверку образов на уязвимости',help:'в этом поможет Container Security',
+      icon:'M3 8l9-5 9 5v8l-9 5-9-5zM3 8l9 5 9-5M12 13v8'},
+    ddos:{name:'DDoS-атака',col:'#22D3EE',hp:11,spd:84,rew:3,dmg:2,r:9,pack:6,gap:.12,
+      desc:'Злоумышленник направляет на веб-ресурс большое количество запросов, перегружая сервер и делая сайт недоступным для пользователей.',
+      trait:'Поток мелких запросов: идёт стаей по шесть.',
+      need:'улучшить защиту веб-ресурсов от перегрузки вредоносным трафиком',help:'в этом помогут решения для защиты веб-ресурсов и Anti-DDoS',
+      icon:'M13 2L4 14h7l-1 8 9-12h-7z'},
+    vuln:{name:'Эксплуатация неисправленных уязвимостей',col:'#FCA5A5',hp:150,spd:34,rew:20,dmg:10,r:15,armor:true,
+      desc:'Злоумышленник использует известную, но не закрытую уязвимость в системе, чтобы проникнуть в инфраструктуру.',
+      trait:'Отдельного решения нет: любые решения бьют её вполсилы. Закрывается аудитом ИБ.',
+      need:'улучшить процессы выявления уязвимостей и проверки соответствия требованиям информационной безопасности',help:'в этом поможет аудит информационной безопасности',
+      icon:'M12 2l9 5v10l-9 5-9-5V7zM12 8v5M12 16.5v.5'}
+  };
+  var ALLT=['cred','sql','brute','leak','ddos','ransom','scan','priv','lateral','container','vuln'];
+  var TOW={
+    idm:{abbr:'IDM',name:'IDM (Identity Management)',cost:50,dmg:8,rate:.3,range:95,counter:'cred',
+      desc:'Решение для централизованного управления учётными записями сотрудников и правами доступа к корпоративным системам.',
+      game:'Частые выстрелы по кражам учётных данных.'},
+    pam:{abbr:'PAM',name:'PAM (Privileged Access Management)',cost:90,dmg:32,rate:.7,range:125,counter:'priv',seesHidden:true,
+      desc:'Решение для защиты привилегированных учётных записей, контроля действий администраторов и управления административным доступом.',
+      game:'Единственное решение, которое само видит злоупотребления привилегиями.'},
+    siem:{abbr:'SIEM',name:'SIEM (Security Information and Event Management)',cost:80,dmg:7,rate:.35,range:112,counter:'brute',multi:3,reveals:true,
+      desc:'Решение для централизованного сбора и анализа событий информационной безопасности, выявления подозрительной активности и обнаружения инцидентов.',
+      game:'Бьёт до трёх попыток перебора сразу. В зоне SIEM скрытые угрозы видны всем решениям.'},
+    edr:{abbr:'EDR',name:'EDR (Endpoint Detection and Response)',cost:80,dmg:24,rate:.8,range:110,counter:'ransom',protects:true,
+      desc:'Решение для мониторинга и защиты рабочих станций и серверов от вредоносной активности с возможностью реагирования на инциденты.',
+      game:'Бьёт шифровальщиков и защищает соседние решения от отключения.'},
+    dlp:{abbr:'DLP',name:'DLP (Data Loss Prevention)',cost:70,dmg:26,rate:1,range:120,counter:'leak',
+      desc:'Решение для предотвращения утечек конфиденциальной информации и контроля передачи данных за пределы организации.',
+      game:'Мощные удары по утечкам данных.'},
+    waf:{abbr:'WAF',name:'WAF (Web Application Firewall)',cost:60,dmg:9,rate:.32,range:100,counter:'sql',
+      desc:'Решение для защиты веб-приложений от вредоносных запросов и попыток эксплуатации уязвимостей.',
+      game:'Частые выстрелы по SQL-инъекциям.'},
+    ngfw:{abbr:'NGFW',name:'NGFW (Next-Generation Firewall)',cost:70,dmg:14,rate:.5,range:105,counter:'scan',slow:true,
+      desc:'Межсетевой экран нового поколения для контроля сетевого трафика, фильтрации соединений и блокировки сетевых угроз.',
+      game:'Бьёт сканирование портов и замедляет любую цель.'},
+    nad:{abbr:'NAD',name:'NAD (Network Anomaly Detection)',cost:80,dmg:24,rate:.8,range:130,counter:'lateral',
+      desc:'Решение для анализа сетевого трафика, выявления аномалий и обнаружения подозрительной активности в инфраструктуре.',
+      game:'Большая дальность, мощно бьёт боковое перемещение.'},
+    cs:{abbr:'CS',name:'Container Security',cost:70,dmg:18,rate:.7,range:105,counter:'container',
+      desc:'Решение для защиты контейнерной инфраструктуры, проверки образов на уязвимости и контроля безопасности контейнеров.',
+      game:'Уничтожает атаки на контейнеры целиком, без копий.'},
+    web:{abbr:'WEB',name:'Защита веб-ресурсов',cost:90,dmg:6,rate:.3,range:112,counter:'ddos',multi:4,
+      desc:'Комплекс технологий для защиты сайтов и веб-сервисов от вредоносного трафика, эксплуатации уязвимостей и атак на доступность.',
+      game:'Бьёт до четырёх DDoS-запросов сразу.'}
+  };
+  var ORDER=['idm','pam','siem','edr','dlp','waf','ngfw','nad','cs','web'];
+  function counterOf(k){for(var i=0;i<ORDER.length;i++)if(TOW[ORDER[i]].counter===k)return ORDER[i];return null;}
+  function tcol(k){return TH[TOW[k].counter].col;}
+  var MISMATCH=.2,BOSS_MISMATCH=.08,ARMOR=.5;
+
+  var SC={
+    bank:{name:'Банк',desc:'Кражи учётных данных, перебор паролей, SQL-инъекции, утечки, злоупотребление привилегиями',waves:10,threats:['cred','brute','sql','leak','priv','vuln'],second:8},
+    plant:{name:'Завод',desc:'Перебор паролей, шифровальщики, сканирование портов, боковое перемещение',waves:10,threats:['brute','ransom','scan','lateral','priv','vuln'],second:8},
+    retail:{name:'Ритейл',desc:'SQL-инъекции, DDoS, кражи учётных данных, утечки, контейнеры',waves:10,threats:['sql','ddos','cred','leak','container','ransom'],second:8},
+    holding:{name:'Холдинг',desc:'Полная кампания: все 11 угроз, 15 волн',waves:15,threats:ALLT.slice(),second:10}
+  };
+  var SCO=['bank','plant','retail','holding'];
+  var FROMS10=[1,2,3,4,5,7],FROMS15=[1,2,3,4,5,6,7,8,10,11,12];
+  var DIFF={
+    easy:{name:'Обучение',desc:'Много бюджета, без износа',money:400,growth:1.08,timer:35,upkeep:0,wear:false,wearRate:0,rew:1.2,bonus:1.3},
+    std:{name:'Стандарт',desc:'Поддержка 5%, износ 10%',money:300,growth:1.12,timer:22,upkeep:.05,wear:true,wearRate:.1,rew:1,bonus:1.1},
+    hard:{name:'Эксперт',desc:'Поддержка 8%, износ 15%',money:250,growth:1.16,timer:15,upkeep:.08,wear:true,wearRate:.15,rew:.9,bonus:1}
+  };
+  var DO=['easy','std','hard'];
+
+  var paths={};
+  ALLT.forEach(function(k){try{paths[k]=new Path2D(TH[k].icon);}catch(e){paths[k]=null;}});
+  var BOSS_ICON='M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18M12 8a4 4 0 1 0 0 8a4 4 0 1 0 0-8M12 1v5M12 18v5M1 12h5M18 12h5';
+  try{paths.boss=new Path2D(BOSS_ICON);}catch(e){paths.boss=null;}
+  function iconSVG(k,size){
+    var col=k==='boss'?C.boss:TH[k].col,ic=k==='boss'?BOSS_ICON:TH[k].icon;
+    return '<svg class="ico" width="'+size+'" height="'+size+'" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="12" fill="'+col+'"/><g transform="translate(4.8 4.8) scale(.6)"><path d="'+ic+'" fill="none" stroke="#0a1230" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></g></svg>';
+  }
+  function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');}
+  function short(n){return n.replace(/ \(.*\)$/,'');}
+
+  // ---------- map ----------
+  function mkPath(wp){return wp.map(function(p){return{x:(p[0]+.5)*CS,y:(p[1]+.5)*CS};});}
+  var WPA=[[2,-1],[2,3],[9,3],[9,6],[2,6],[2,9],[9,9],[9,12],[5,12],[5,15]];
+  var WPB=[[12,1],[11,1],[11,13],[5,13],[5,15]];
+  var PA=mkPath(WPA),PB=mkPath(WPB),MID_I=5;
+  var CORE={c:5,r:15};
+  var onPath={},onB={};
+  function mark(wp,store){
+    for(var i=0;i<wp.length-1;i++){
+      var a=wp[i],b=wp[i+1],dc=Math.sign(b[0]-a[0]),dr=Math.sign(b[1]-a[1]),c=a[0],r=a[1];
+      while(true){store[c+','+r]=1;if(c===b[0]&&r===b[1])break;c+=dc;r+=dr;}
+    }
+  }
+  mark(WPA,onPath);mark(WPB,onB);
+  var pads={},padList=[];
+  (function(){
+    for(var c=0;c<COLS;c++)for(var r=0;r<ROWS;r++){
+      var key=c+','+r;
+      if(onPath[key]||onB[key]||(c===CORE.c&&r===CORE.r))continue;
+      if((c+r)%2!==0)continue;
+      var near=false;
+      for(var dc=-1;dc<=1&&!near;dc++)for(var dr=-1;dr<=1;dr++){var k2=(c+dc)+','+(r+dr);if(onPath[k2]||onB[k2]){near=true;break;}}
+      if(near){pads[key]=1;padList.push({c:c,r:r});}
+    }
+  })();
+
+  // ---------- state ----------
+  var state='menu',scKey='bank',dfKey='std',sc=SC.bank,df=DIFF.std,from={};
+  var towers=[],enemies=[],beams=[],floats=[],bursts=[],queue=[],nextQ=[],money=0,integrity=100,wave=0,waveOn=false,spawnT=0,countdown=0;
+  var selShop=null,selTower=null,speed=1,clock=0,shake=0,flashCore=0,banner=null,stats=null,last=0;
+
+  function rint(n){return Math.floor(Math.random()*n);}
+  function rr(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+  function loadBest(s,d){try{return +localStorage.getItem('ectg-'+s+'-'+d)||0;}catch(e){return 0;}}
+  function saveBest(s,d,v){try{if(v>loadBest(s,d))localStorage.setItem('ectg-'+s+'-'+d,String(v));}catch(e){}}
+  function tstats(t){var d=TOW[t.type],l=t.lv-1;return{dmg:d.dmg*(1+.5*l)*(.5+.5*t.fresh),range:d.range*(1+.1*l),rate:d.rate*(1-.08*l)};}
+  function upCost(t){return Math.round(TOW[t.type].cost*.9*t.lv);}
+  function refreshCost(t){return Math.round(TOW[t.type].cost*.3);}
+  function sellVal(t){return Math.round(t.spent*.6);}
+  function towerAt(c,r){for(var i=0;i<towers.length;i++)if(towers[i].c===c&&towers[i].r===r)return towers[i];return null;}
+  function tc(t){return{x:(t.c+.5)*CS,y:(t.r+.5)*CS};}
+  function inScenario(k){return sc.threats.indexOf(k)>=0;}
+  function towerUseful(k){return inScenario(TOW[k].counter)||(TOW[k].reveals&&inScenario('priv'));}
+  function freshCol(f){return f>.6?C.lime:(f>.3?'#FFD43B':C.orange);}
+
+  // ---------- layout ----------
+  function fit(){
+    var h=window.innerHeight;
+    if(tg&&tg.viewportStableHeight)h=Math.max(300,tg.viewportStableHeight);
+    document.documentElement.style.setProperty('--app-h',h+'px');
+    var st=$('stage'),aw=st.clientWidth,ah=st.clientHeight;
+    var fh=Math.max(200,Math.min(ah,aw*4/3)),fw=fh*.75;
+    var box=$('fieldbox');box.style.width=Math.floor(fw)+'px';box.style.height=Math.floor(fh)+'px';
+    placePop();
+  }
+  window.addEventListener('resize',fit);
+  T(function(t){if(t.onEvent)t.onEvent('viewportChanged',fit);});
+
+  // ---------- dock & hint ----------
+  var dockEls={};
+  (function(){
+    var dock=$('dock');
+    ORDER.forEach(function(k){
+      var d=TOW[k],b=document.createElement('button');
+      b.type='button';b.className='tw';b.style.setProperty('--pc',tcol(k));b.setAttribute('aria-pressed','false');
+      b.setAttribute('aria-label',d.name+', '+d.cost+', против: '+TH[d.counter].name);
+      b.innerHTML='<span class="d"></span><span class="a">'+d.abbr+'</span><span class="c">'+d.cost+'</span>';
+      b.addEventListener('click',function(){pickShop(k);});
+      dock.appendChild(b);dockEls[k]=b;
+    });
+  })();
+  function pickShop(k){
+    if(state!=='play')return;
+    selShop=selShop===k?null:k;selTower=null;haptic('tap');renderInfo();
+  }
+  function syncDock(){
+    ORDER.forEach(function(k){
+      var b=dockEls[k];
+      b.hidden=state==='menu'?false:!towerUseful(k);
+      b.setAttribute('aria-pressed',selShop===k?'true':'false');
+      b.classList.toggle('poor',money<TOW[k].cost);
+    });
+  }
+  function renderHint(){
+    var h=$('hint'),s='';
+    if(state!=='play'&&state!=='pause'){h.innerHTML='';return;}
+    if(selShop){
+      var d=TOW[selShop],t=TH[d.counter];
+      s='<span class="dot" style="background:'+t.col+'"></span><span class="tx"><b>'+d.abbr+'</b> против «'+esc(short(t.name))+'» · '+d.cost+'. Нажмите на свободную площадку.</span><button class="more" type="button" data-sol="'+selShop+'">Подробнее</button>';
+    }else if(selTower){
+      s='<span class="tx">Улучшите, обновите или продайте решение в панели на карте.</span>';
+    }else{
+      s='<span class="tx">Выберите решение внизу и поставьте его на площадку у маршрута.'+(df.upkeep>0?' Поддержка: <b>'+upkeepAmount()+'</b> за волну.':'')+'</span>';
+    }
+    h.innerHTML=s;
+    var m=h.querySelector('[data-sol]');if(m)m.addEventListener('click',function(){openSheet('sol',m.getAttribute('data-sol'));});
+  }
+  function renderNext(){
+    var el=$('next');
+    if(state==='menu'){el.innerHTML='';return;}
+    if(wave>=sc.waves){el.innerHTML='<span class="nl">Все волны пройдены</span>';return;}
+    var counts={},order=[];
+    nextQ.forEach(function(q){if(!counts[q.t]){counts[q.t]=0;order.push(q.t);}counts[q.t]++;});
+    var h='<span class="nl">'+(waveOn?'Далее ':'Волна ')+(wave+1)+':</span>';
+    order.forEach(function(k){
+      var isNew=k!=='boss'&&from[k]===wave+1;
+      h+='<span class="nchip'+(isNew?' new':'')+'">'+iconSVG(k,16)+'×'+counts[k]+(isNew?' нов.':'')+'</span>';
+    });
+    el.innerHTML=h;
+  }
+  $('next').addEventListener('click',function(){if(state==='play'||state==='pause')openSheet('thr');});
+
+  // ---------- sheet ----------
+  var sheetTab='sol',sheetOpen=false;
+  function openSheet(tab,focus){
+    sheetTab=tab||'sol';sheetOpen=true;
+    if(state==='play')pauseGame(true);
+    renderSheet(focus);
+    $('sheet').hidden=false;$('sheetbg').hidden=false;syncBack();
+  }
+  function closeSheet(){
+    sheetOpen=false;$('sheet').hidden=true;$('sheetbg').hidden=true;
+    if(state==='pause'&&silentPause)resumeGame();
+    syncBack();
+  }
+  function renderSheet(focus){
+    $('tab-sol').setAttribute('aria-selected',sheetTab==='sol'?'true':'false');
+    $('tab-thr').setAttribute('aria-selected',sheetTab==='thr'?'true':'false');
+    var b=$('sheetbody'),h='',inGame=state!=='menu';
+    if(sheetTab==='sol'){
+      ORDER.forEach(function(k){
+        var d=TOW[k],t=TH[d.counter],off=inGame&&!towerUseful(k);
+        h+='<div class="card'+(off?' off':'')+(focus===k?' focus':'')+'" id="sc-'+k+'" style="--pc:'+t.col+'"><span class="sq">'+d.abbr+'</span><span class="body">'+
+          '<span class="hd"><span class="nm">'+esc(d.name)+'</span><span class="cost">'+d.cost+'</span></span>'+
+          '<span class="vs">Против: '+iconSVG(d.counter,16)+'<b>'+esc(short(t.name))+'</b></span>'+
+          '<span class="ds">'+esc(d.desc)+'</span><span class="gm">В игре: '+esc(d.game)+'</span>'+
+          (off?'<span class="badge">в этом сценарии не нужно</span>':'')+'</span></div>';
+      });
+    }else{
+      var list=inGame?sc.threats:ALLT,counts={};
+      nextQ.forEach(function(q){counts[q.t]=(counts[q.t]||0)+1;});
+      list.forEach(function(k){
+        var t=TH[k],cnt=counterOf(k),badge='';
+        if(inGame){
+          if(from[k]>wave+1)badge='<span class="badge">с '+from[k]+'-й волны</span>';
+          else if(counts[k])badge='<span class="badge'+(from[k]===wave+1?' new':'')+'">'+(from[k]===wave+1?'Новая: ':'')+counts[k]+' шт.</span>';
+        }
+        h+='<div class="card" style="--pc:'+t.col+'">'+iconSVG(k,28)+'<span class="body"><span class="hd"><span class="nm">'+esc(t.name)+'</span>'+badge+'</span>'+
+          '<span class="ds">'+esc(t.desc)+'</span><span class="gm">В игре: '+esc(t.trait)+'</span>'+
+          '<span class="vs">Закрывает: <b style="color:'+t.col+'">'+(cnt?TOW[cnt].abbr:'аудит ИБ')+'</b></span></span></div>';
+      });
+      h+='<div class="card" style="--pc:'+C.boss+'">'+iconSVG('boss',28)+'<span class="body"><span class="hd"><span class="nm">Целевая атака</span><span class="badge">финальный босс</span></span>'+
+        '<span class="ds">Сложная многоэтапная атака на конкретную организацию.</span><span class="gm">В игре: приходит в последней волне и меняет тактику по ходу движения. На каждом этапе нужна своя защита.</span></span></div>';
+    }
+    b.innerHTML=h;b.scrollTop=0;
+    if(focus){var f=$('sc-'+focus);if(f)f.scrollIntoView({block:'center'});}
+  }
+  $('helpbtn').addEventListener('click',function(){openSheet('sol');});
+  $('tab-sol').addEventListener('click',function(){sheetTab='sol';renderSheet();});
+  $('tab-thr').addEventListener('click',function(){sheetTab='thr';renderSheet();});
+  $('sheetx').addEventListener('click',closeSheet);
+  $('sheetbg').addEventListener('click',closeSheet);
+
+  // ---------- tower panel ----------
+  function doUpgrade(t){if(!t||t.lv>=3)return false;var c=upCost(t);if(money<c)return false;money-=c;t.spent+=c;t.lv++;t.fresh=1;return true;}
+  function doRefresh(t){if(!t||t.fresh>=1)return false;var c=refreshCost(t);if(money<c)return false;money-=c;t.fresh=1;return true;}
+  function renderInfo(){renderPop();renderHint();syncDock();}
+  function renderPop(){
+    var pop=$('pop');
+    if(state!=='play'||!selTower){pop.hidden=true;pop.innerHTML='';return;}
+    var t=selTower,d=TOW[t.type],s=tstats(t);
+    var h='<div class="pop-h"><b style="color:'+tcol(t.type)+'">'+d.abbr+'</b><span>уровень '+t.lv+' из 3</span><button type="button" class="pop-x" id="popx" aria-label="Закрыть">×</button></div>';
+    h+='<div class="pop-s">Урон '+Math.round(s.dmg)+(df.wear?' · базы '+Math.round(t.fresh*100)+'%':'')+(t.off>0?' · отключено':'')+'</div>';
+    h+='<div class="pop-b"><button type="button" class="mini up" id="upb">'+(t.lv>=3?'Макс. уровень':'Улучшить · '+upCost(t))+'</button>';
+    if(df.wear&&t.fresh<1)h+='<button type="button" class="mini" id="rfb">Обновить · '+refreshCost(t)+'</button>';
+    h+='<button type="button" class="mini" id="slb">Продать · '+sellVal(t)+'</button></div>';
+    pop.innerHTML=h;
+    var ub=$('upb'),rf=$('rfb');
+    ub.disabled=t.lv>=3||money<upCost(t);if(rf)rf.disabled=money<refreshCost(t);
+    ub.addEventListener('click',function(){if(doUpgrade(selTower)){haptic('tap');renderInfo();}});
+    if(rf)rf.addEventListener('click',function(){if(doRefresh(selTower)){haptic('tap');renderInfo();}});
+    $('slb').addEventListener('click',function(){if(!selTower)return;money+=sellVal(selTower);towers.splice(towers.indexOf(selTower),1);selTower=null;renderInfo();});
+    $('popx').addEventListener('click',function(){selTower=null;renderInfo();});
+    pop.hidden=false;placePop();
+  }
+  function placePop(){
+    var pop=$('pop');if(pop.hidden||!selTower)return;
+    var fw=cv.clientWidth||W,k=fw/W,pw=pop.offsetWidth,ph=pop.offsetHeight;
+    var cx=(selTower.c+.5)*CS*k,top=selTower.r*CS*k-ph-6;
+    if(top<4)top=(selTower.r+1)*CS*k+6;
+    pop.style.left=Math.max(4,Math.min(fw-pw-4,cx-pw/2))+'px';pop.style.top=top+'px';
+  }
+  function upkeepAmount(){var s=0;towers.forEach(function(t){s+=t.spent;});return Math.round(s*df.upkeep);}
+
+  // ---------- waves ----------
+  function bossPhases(){return sc.threats.filter(function(k){return k!=='vuln';}).slice(0,4);}
+  function buildWave(w){
+    if(w>sc.waves)return[];
+    var types=sc.threats.filter(function(k){return from[k]<=w;});
+    var n=Math.min(40,5+2*w),q=[],i;
+    var fresh=types.filter(function(k){return from[k]===w;})[0];
+    var second=w>=sc.second;
+    function push(k){
+      var b=second&&k!=='lateral'&&Math.random()<.4,d=TH[k];
+      if(d.pack){for(var j=0;j<d.pack;j++)q.push({t:k,gap:j<d.pack-1?d.gap:undefined,b:b});}
+      else q.push({t:k,b:b});
+    }
+    if(fresh){var reps=TH[fresh].pack?1:(fresh==='vuln'?2:4);for(i=0;i<reps;i++)push(fresh);}
+    while(q.length<n){var k=types[rint(types.length)];if(k==='vuln'&&Math.random()<.6)continue;push(k);}
+    if(w===sc.waves)q.push({t:'boss'});
+    return q;
+  }
+  function startWave(early){
+    if(state!=='play'||waveOn||wave>=sc.waves)return;
+    if(early&&countdown>0){var bonus=Math.ceil(countdown)*2;money+=bonus;floats.push({x:W/2,y:H*.2,txt:'Досрочный старт +'+bonus,col:C.lime,life:1.4,big:true});}
+    var up=upkeepAmount();
+    if(up>0){money=Math.max(0,money-up);floats.push({x:W/2,y:H*.25,txt:'Поддержка решений −'+up,col:C.orange,life:1.6});}
+    wave++;waveOn=true;queue=nextQ;spawnT=.3;countdown=0;
+    var newOnes=sc.threats.filter(function(k){return from[k]===wave;});
+    if(wave===sc.waves){
+      banner={k:'boss',title:'Финальная волна',text:'В конце придёт целевая атака. Она меняет тактику: '+bossPhases().map(function(p){return short(TH[p].name).toLowerCase();}).join(' → ')+'.',hint:'Нужен весь эшелон защиты',life:5.5};
+    }else if(wave===sc.second){
+      banner={k:null,title:'Открыт второй вход',text:'Часть угроз теперь идёт справа, по короткому маршруту. Укрепите и его.',hint:'Площадки справа у колонны',life:4.5};
+    }else if(newOnes.length){
+      var k=newOnes[0],cnt=counterOf(k);
+      banner={k:k,title:'Новая угроза',text:short(TH[k].name)+'. '+TH[k].trait,hint:cnt?'Против неё: '+TOW[cnt].abbr:'Бейте любыми решениями',life:4.5};
+    }
+    nextQ=buildWave(wave+1);
+    renderNext();renderInfo();
+  }
+  function spawn(item,at,mini){
+    var type=item.t,isBoss=type==='boss',g=Math.pow(df.growth,(wave-1)*Math.min(1,10/sc.waves));
+    var tk=isBoss?bossPhases()[0]:type,d=TH[tk];
+    var hp=isBoss?900*g:d.hp*g*(mini?.35:1);
+    var path=item.b?PB:PA,seg=0,pos=path[0];
+    if(d.mid&&!isBoss&&!at){path=PA;seg=MID_I;pos=PA[MID_I];}
+    var e={type:tk,def:d,boss:isBoss,phase:0,hp:hp,max:hp,path:path,seg:seg,x:pos.x,y:pos.y,
+      slowT:0,shield:0,age:0,mini:!!mini,hitT:{},r:isBoss?22:(mini?8:d.r),spd:isBoss?26:d.spd,
+      rew:isBoss?150:Math.max(1,Math.round(d.rew*df.rew*(mini?.4:1)))};
+    if(at){e.path=at.path;e.seg=at.seg;e.x=at.x+(Math.random()-.5)*10;e.y=at.y+(Math.random()-.5)*10;}
+    enemies.push(e);
+  }
+
+  // ---------- flow ----------
+  function start(s,d){
+    scKey=s;dfKey=d;sc=SC[s];df=DIFF[d];
+    var fr=sc.waves>10?FROMS15:FROMS10;
+    from={};sc.threats.forEach(function(k,i){from[k]=fr[i];});
+    towers=[];enemies=[];beams=[];floats=[];bursts=[];queue=[];
+    money=df.money;integrity=100;wave=0;waveOn=false;spawnT=0;countdown=df.timer+10;
+    selShop=null;selTower=null;speed=1;shake=0;flashCore=0;banner=null;
+    stats={match:0,total:0,stopped:0,miss:{},missDmg:{},bossLeak:false};
+    nextQ=buildWave(1);
+    $('speed').textContent='×1';$('speed').setAttribute('aria-pressed','false');
+    $('pausebtn').disabled=false;$('pausebtn').setAttribute('aria-pressed','false');
+    state='play';$('overlay').hidden=true;last=performance.now();
+    T(function(t){if(t.enableClosingConfirmation)t.enableClosingConfirmation();});
+    renderNext();renderInfo();syncBack();fit();
+  }
+  function starStr(n){var s='';for(var i=0;i<3;i++)s+=i<n?'★':'☆';return s;}
+  function showOverlay(html,mid){
+    var ov=$('ov');ov.className='ov'+(mid?' mid':'');ov.innerHTML=html;
+    $('overlay').hidden=false;$('overlay').scrollTop=0;
+  }
+  function showMenu(){
+    state='menu';silentPause=false;enemies=[];towers=[];selShop=null;selTower=null;
+    $('pausebtn').disabled=true;$('pausebtn').setAttribute('aria-pressed','false');
+    T(function(t){if(t.disableClosingConfirmation)t.disableClosingConfirmation();});
+    var lg=document.querySelector('.top .logo');var h=(lg?lg.outerHTML:'')+'<h2>Эшелон</h2><p>Защитите ядро компании: ставьте решения на площадки у маршрута и подбирайте к каждой угрозе свою защиту. <b>Чужое решение бьёт всего на 20%.</b></p>';
+    h+='<span class="lbl">Сценарий</span><div class="opts" role="group" aria-label="Сценарий">';
+    SCO.forEach(function(k){
+      var s=SC[k],b=loadBest(k,dfKey);
+      h+='<button type="button" class="opt" data-sc="'+k+'" aria-pressed="'+(k===scKey)+'"><b>'+s.name+' · '+s.waves+' волн</b><span>'+esc(s.desc)+'</span>'+(b?'<span class="st2">'+starStr(b)+'</span>':'')+'</button>';
+    });
+    h+='</div><span class="lbl">Сложность</span><div class="diff" role="group" aria-label="Сложность">';
+    DO.forEach(function(k){h+='<button type="button" class="opt" data-df="'+k+'" aria-pressed="'+(k===dfKey)+'"><b>'+DIFF[k].name+'</b><span>'+DIFF[k].desc+'</span></button>';});
+    h+='</div><div class="acts"><button class="btn" id="go" type="button">Начать</button><button class="btn ghost" id="menuhelp" type="button">Справочник решений и угроз</button><button class="btn ghost" id="allgames" type="button">← Все игры</button></div>';
+    showOverlay(h,true);
+    $('allgames').addEventListener('click',goHome);
+    var ov=$('ov');
+    ov.querySelectorAll('[data-sc]').forEach(function(b){b.addEventListener('click',function(){scKey=b.getAttribute('data-sc');showMenu();});});
+    ov.querySelectorAll('[data-df]').forEach(function(b){b.addEventListener('click',function(){dfKey=b.getAttribute('data-df');showMenu();});});
+    $('go').addEventListener('click',function(){start(scKey,dfKey);});
+    $('menuhelp').addEventListener('click',function(){openSheet('sol');});
+    renderNext();renderInfo();syncBack();
+  }
+  var silentPause=false;
+  function pauseGame(silent){
+    if(state!=='play')return;
+    state='pause';silentPause=!!silent;
+    $('pausebtn').setAttribute('aria-pressed','true');
+    if(!silent){
+      showOverlay('<span class="lbl">Пауза · '+esc(sc.name)+' · '+esc(df.name)+'</span><h2>Игра на паузе</h2>'+
+        '<p>Волна '+wave+' из '+sc.waves+(waveOn?' идёт':'')+'. Ядро '+Math.round(integrity)+'%, бюджет '+money+'.</p>'+
+        '<div class="acts"><button class="btn" type="button" id="resume">Продолжить</button>'+
+        '<button class="btn ghost" type="button" id="restart">Начать раунд заново</button>'+
+        '<button class="btn ghost" type="button" id="tomenu">Главное меню</button></div>',true);
+      $('resume').addEventListener('click',resumeGame);
+      $('restart').addEventListener('click',function(){start(scKey,dfKey);});
+      $('tomenu').addEventListener('click',showMenu);
+    }
+    renderInfo();syncBack();
+  }
+  function resumeGame(){
+    if(state!=='pause')return;
+    state='play';silentPause=false;$('overlay').hidden=true;$('pausebtn').setAttribute('aria-pressed','false');
+    last=performance.now();renderInfo();syncBack();
+  }
+  function plural(n,f1,f2,f5){var m=n%100,d=n%10;if(m>10&&m<20)return f5;if(d===1)return f1;if(d>=2&&d<=4)return f2;return f5;}
+  function recsHTML(){
+    var tail='<span class="pz">Компания Puzzle Systems подберёт нужный Вам продукт в соответствии с рекомендацией. Напишите нам: <a class="site" href="'+SITE+'" target="_blank" rel="noopener">puzzle.systems</a></span>';
+    var ks=Object.keys(stats.miss).sort(function(a,b){return stats.miss[b]-stats.miss[a];});
+    var h='<span class="lbl">'+(ks.length||stats.bossLeak?'Рекомендации по пропущенным атакам':'Рекомендации')+'</span><div class="recs">';
+    ks.forEach(function(k){
+      var t=TH[k],n=stats.miss[k],many=n>=(t.pack?8:3),txt;
+      if(t.incident)txt=many?'Вы допустили большое количество инцидентов «'+t.name+'»':'Вы допустили '+n+' '+plural(n,'инцидент','инцидента','инцидентов')+' «'+t.name+'»';
+      else txt=many?'Вы пропустили большое количество атак «'+t.name+'»':'Вы пропустили '+n+' '+plural(n,'атаку','атаки','атак')+' «'+t.name+'»';
+      h+='<div class="rec" style="--pc:'+t.col+'"><b>'+esc(txt)+'</b>, вам необходимо '+esc(t.need)+', '+esc(t.help)+'.'+tail+'</div>';
+    });
+    if(stats.bossLeak)h+='<div class="rec" style="--pc:'+C.boss+'"><b>Целевая атака прорвалась к ядру.</b> Против целевых атак нужна комплексная защита: обратитесь в Puzzle Systems, специалисты оценят вашу инфраструктуру и подберут решения.'+tail+'</div>';
+    if(!ks.length&&!stats.bossLeak)h+='<div class="rec" style="--pc:'+C.lime+'"><b>Ни одна атака не дошла до ядра.</b> Чтобы так же надёжно была защищена реальная инфраструктура, нужен комплекс решений.'+tail+'</div>';
+    return h+'</div>';
+  }
+  function finish(win){
+    state='over';waveOn=false;silentPause=false;selShop=null;selTower=null;
+    $('pausebtn').disabled=true;
+    T(function(t){if(t.disableClosingConfirmation)t.disableClosingConfirmation();});
+    haptic(win?'ok':'bad');
+    var acc=stats.total>0?stats.match/stats.total:1;
+    var stars=0;if(win){stars=1;if(integrity>=60)stars++;if(acc>=.75)stars++;saveBest(scKey,dfKey,stars);}
+    var reached=win?sc.waves:Math.max(0,wave-1),leaked=0;for(var k in stats.miss)leaked+=stats.miss[k];if(stats.bossLeak)leaked++;
+    var h='<span class="lbl">Аудит защищённости · '+esc(sc.name)+' · '+esc(df.name)+'</span>';
+    h+='<h2>'+(win?'Инфраструктура защищена':'Ядро потеряно на волне '+wave)+'</h2>';
+    if(win){h+='<div class="stars" aria-label="'+stars+' из 3 звёзд">';for(var i=0;i<3;i++)h+=i<stars?'★':'<i>★</i>';h+='</div>';}
+    h+='<dl class="rep"><dt>Отражено волн</dt><dd>'+reached+' из '+sc.waves+'</dd>'+
+      '<dt>Целостность ядра</dt><dd>'+Math.max(0,Math.round(integrity))+'%</dd>'+
+      '<dt>Точность подбора решений</dt><dd>'+(stats.total>0?Math.round(acc*100)+'%':'—')+'</dd>'+
+      '<dt>Угроз остановлено</dt><dd>'+stats.stopped+'</dd>'+
+      '<dt>Атак дошло до ядра</dt><dd>'+leaked+'</dd></dl>';
+    if(win)h+='<p>Звёзды: победа, целостность от 60%, точность подбора от 75%.</p>';
+    h+=recsHTML();
+    h+='<div class="acts"><button class="btn" type="button" id="again">Сыграть ещё раз</button><button class="btn ghost" type="button" id="tomenu">Другой сценарий</button></div>';
+    showOverlay(h,false);
+    $('again').addEventListener('click',function(){start(scKey,dfKey);});
+    $('tomenu').addEventListener('click',showMenu);
+    renderInfo();syncBack();
+  }
+  function syncBack(){
+    T(function(t){if(!t.BackButton)return;var show=true;if(show)t.BackButton.show();else t.BackButton.hide();});
+  }
+  T(function(t){if(t.BackButton)t.BackButton.onClick(function(){
+    if(sheetOpen)closeSheet();
+    else if(state==='play')pauseGame();
+    else if(state==='pause')resumeGame();
+    else if(state==='over')showMenu();
+    else goHome();
+  });});
+
+  function addBurst(x,y,col,n){if(calm)n=Math.ceil(n/3);for(var i=0;i<n;i++){var a=Math.random()*6.2832,s=30+Math.random()*110;bursts.push({x:x,y:y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:.45,col:col});}}
+
+  // ---------- rules ----------
+  function inZone(x,y,pred){
+    for(var i=0;i<towers.length;i++){var t=towers[i];if(!pred(TOW[t.type]))continue;var p=tc(t);if(Math.hypot(x-p.x,y-p.y)<=tstats(t).range)return true;}
+    return false;
+  }
+  function visibleTo(e,d){if(e.boss||!e.def.hidden)return true;return d.seesHidden||e.inSiem;}
+  function progress(e){
+    var n=e.path[Math.min(e.seg+1,e.path.length-1)],rem=0;
+    for(var i=e.seg+1;i<e.path.length-1;i++)rem+=Math.hypot(e.path[i+1].x-e.path[i].x,e.path[i+1].y-e.path[i].y);
+    return -(rem+Math.hypot(n.x-e.x,n.y-e.y));
+  }
+  function kill(e,byType){
+    var i=enemies.indexOf(e);if(i<0)return;
+    enemies.splice(i,1);money+=e.rew;stats.stopped++;
+    addBurst(e.x,e.y,e.def.col,e.boss?30:10);
+    floats.push({x:e.x,y:e.y-12,txt:'+'+e.rew,col:C.lime,life:.8});
+    if(e.def.split&&!e.mini&&!e.boss&&byType!=='cs'){
+      spawn({t:e.type},e,true);spawn({t:e.type},e,true);
+      floats.push({x:e.x,y:e.y+18,txt:'распалась',col:e.def.col,life:.9});
+    }
+    if(e.boss){haptic('ok');floats.push({x:W/2,y:H*.4,txt:'Целевая атака отражена',col:C.lime,life:2,big:true});}
+  }
+  function morph(e){
+    var ph=bossPhases(),want=Math.min(ph.length-1,Math.floor((1-e.hp/e.max)*ph.length));
+    if(want>e.phase){
+      e.phase=want;e.type=ph[want];e.def=TH[e.type];
+      floats.push({x:e.x,y:e.y-30,txt:'Смена тактики: '+short(TH[e.type].name),col:TH[e.type].col,life:1.6});
+      addBurst(e.x,e.y,TH[e.type].col,16);
+    }
+  }
+
+  function update(dt){
+    clock+=dt;shake=Math.max(0,shake-24*dt);flashCore=Math.max(0,flashCore-dt);
+    if(banner){banner.life-=dt;if(banner.life<=0)banner=null;}
+    var i,k;
+    for(i=floats.length-1;i>=0;i--){floats[i].life-=dt;floats[i].y-=22*dt;if(floats[i].life<=0)floats.splice(i,1);}
+    for(i=bursts.length-1;i>=0;i--){var b=bursts[i];b.life-=dt;b.x+=b.vx*dt;b.y+=b.vy*dt;b.vx*=.94;b.vy*=.94;if(b.life<=0)bursts.splice(i,1);}
+    for(i=beams.length-1;i>=0;i--){beams[i].life-=dt;if(beams[i].life<=0)beams.splice(i,1);}
+    if(state!=='play')return;
+
+    if(!waveOn&&wave<sc.waves){countdown-=dt;if(countdown<=0)startWave(false);}
+    if(waveOn&&queue.length){
+      spawnT-=dt;
+      if(spawnT<=0){var it=queue.shift();spawn(it);spawnT=it.gap!==undefined?it.gap:Math.max(.35,.85-wave*.025);}
+    }
+    for(i=0;i<towers.length;i++)if(towers[i].off>0)towers[i].off-=dt;
+
+    for(i=enemies.length-1;i>=0;i--){
+      var e=enemies[i];e.age+=dt;e.shield=Math.max(0,e.shield-dt);
+      e.inSiem=inZone(e.x,e.y,function(d){return !!d.reveals;});
+      var sp=e.spd*(e.slowT>0?.5:1);if(e.slowT>0)e.slowT-=dt;
+      var mv=sp*dt;
+      while(mv>0&&e.seg<e.path.length-1){
+        var tx=e.path[e.seg+1].x,ty=e.path[e.seg+1].y,dx=tx-e.x,dy=ty-e.y,dist=Math.hypot(dx,dy);
+        if(dist<=mv){e.x=tx;e.y=ty;e.seg++;mv-=dist;}else{e.x+=dx/dist*mv;e.y+=dy/dist*mv;mv=0;}
+      }
+      if(e.type==='ransom'){
+        for(k=0;k<towers.length;k++){
+          var tw=towers[k],tp=tc(tw),key=tw.c+','+tw.r;
+          if(e.hitT[key])continue;
+          if(Math.hypot(tp.x-e.x,tp.y-e.y)<=50){
+            e.hitT[key]=1;
+            var prot=TOW[tw.type].protects||inZone(tp.x,tp.y,function(d){return !!d.protects;});
+            if(prot)floats.push({x:tp.x,y:tp.y-14,txt:'защищено EDR',col:TH.ransom.col,life:.9});
+            else{tw.off=4;floats.push({x:tp.x,y:tp.y-14,txt:'зашифровано',col:TH.ransom.col,life:.9});}
+          }
+        }
+      }
+      if(e.seg>=e.path.length-1){
+        enemies.splice(i,1);
+        var hit=e.boss?35:(e.mini?Math.ceil(e.def.dmg/2):e.def.dmg);
+        integrity-=hit;flashCore=.35;shake=calm?0:7;haptic('hit');
+        if(e.boss)stats.bossLeak=true;
+        else{stats.miss[e.type]=(stats.miss[e.type]||0)+1;stats.missDmg[e.type]=(stats.missDmg[e.type]||0)+hit;}
+        floats.push({x:(CORE.c+.5)*CS,y:CORE.r*CS-4,txt:'-'+hit+' '+(e.boss?'целевая атака':short(e.def.name).toLowerCase()),col:e.def.col,life:1.1});
+        if(integrity<=0){integrity=0;finish(false);return;}
+      }
+    }
+    for(i=0;i<towers.length;i++){
+      var t=towers[i],d=TOW[t.type];
+      if(t.off>0)continue;
+      var s=tstats(t);
+      t.cd-=dt;if(t.cd>0)continue;
+      var p=tc(t),cands=[];
+      for(k=0;k<enemies.length;k++){
+        var en=enemies[k];
+        if(!visibleTo(en,d))continue;
+        if(Math.hypot(en.x-p.x,en.y-p.y)<=s.range)cands.push({e:en,score:(en.type===d.counter?1e6:0)+progress(en)});
+      }
+      if(!cands.length)continue;
+      cands.sort(function(a,b){return b.score-a.score;});
+      t.cd=s.rate;
+      var n=d.multi||1;
+      for(k=0;k<Math.min(n,cands.length);k++){
+        var tg2=cands[k].e,match=tg2.type===d.counter,armored=!!tg2.def.armor&&!tg2.boss;
+        var mul=armored?ARMOR:(match?1:(tg2.boss?BOSS_MISMATCH:MISMATCH));
+        var dealt=Math.min(Math.max(0,tg2.hp),s.dmg*mul);
+        tg2.hp-=s.dmg*mul;
+        if(!armored){stats.total+=dealt;if(match)stats.match+=dealt;}
+        if(d.slow&&!tg2.boss)tg2.slowT=1.2;
+        if(!match&&!armored)tg2.shield=.18;
+        beams.push({x1:p.x,y1:p.y,x2:tg2.x,y2:tg2.y,life:.11,col:match||armored?tcol(t.type):null});
+        if(tg2.hp<=0)kill(tg2,t.type);
+        else if(tg2.boss)morph(tg2);
+      }
+    }
+    if(waveOn&&!queue.length&&!enemies.length){
+      waveOn=false;
+      if(df.wear)towers.forEach(function(t){t.fresh=Math.max(0,Math.round((t.fresh-df.wearRate)*100)/100);});
+      if(wave>=sc.waves){finish(true);return;}
+      var bonus=Math.round((15+wave*5)*df.bonus);money+=bonus;countdown=df.timer;
+      floats.push({x:W/2,y:H*.47,txt:'Волна '+wave+' отражена  +'+bonus,col:C.lime,life:1.8,big:true});
+      renderNext();renderInfo();
+    }
+  }
+
+  // ---------- drawing ----------
+  function drawIcon(k,x,y,size,col){
+    if(!paths[k])return;
+    ctx.save();ctx.translate(x,y);var s=size/24;ctx.scale(s,s);ctx.translate(-12,-12);
+    ctx.strokeStyle=col;ctx.lineWidth=2.6;ctx.lineCap='round';ctx.lineJoin='round';ctx.stroke(paths[k]);ctx.restore();
+  }
+  function drawEnemy(e){
+    var hidden=e.def.hidden&&!e.boss&&!e.inSiem&&!inZone(e.x,e.y,function(d){return !!d.seesHidden;});
+    ctx.save();
+    if(hidden)ctx.globalAlpha=.3+.1*Math.sin(clock*4);
+    ctx.fillStyle=e.boss?C.boss:e.def.col;ctx.beginPath();ctx.arc(e.x,e.y,e.r,0,6.2832);ctx.fill();
+    if(e.boss){ctx.fillStyle=e.def.col;ctx.beginPath();ctx.arc(e.x,e.y,e.r-6,0,6.2832);ctx.fill();ctx.strokeStyle=C.lime;ctx.lineWidth=3;ctx.beginPath();ctx.arc(e.x,e.y,e.r+4,0,6.2832);ctx.stroke();}
+    else if(e.def.armor){ctx.strokeStyle=e.def.col;ctx.lineWidth=2;ctx.beginPath();ctx.arc(e.x,e.y,e.r+4,0,6.2832);ctx.stroke();}
+    drawIcon(e.type,e.x,e.y,e.r*(e.boss?1:1.25),C.navy);
+    if(hidden){ctx.setLineDash([3,3]);ctx.strokeStyle=C.ink;ctx.lineWidth=1;ctx.beginPath();ctx.arc(e.x,e.y,e.r+3,0,6.2832);ctx.stroke();ctx.setLineDash([]);}
+    ctx.restore();
+    if(e.shield>0){ctx.strokeStyle='rgba(238,242,255,.75)';ctx.lineWidth=2;ctx.beginPath();ctx.arc(e.x,e.y,e.r+5,0,6.2832);ctx.stroke();}
+    if(e.slowT>0){ctx.strokeStyle=TH.scan.col;ctx.lineWidth=1;ctx.beginPath();ctx.arc(e.x,e.y,e.r+2,0,6.2832);ctx.stroke();}
+    if(!hidden){
+      var bw=e.r*2+6,pct=Math.max(0,e.hp/e.max);
+      ctx.fillStyle='rgba(10,18,48,.85)';ctx.fillRect(e.x-bw/2,e.y-e.r-10,bw,4);
+      ctx.fillStyle=pct>.4?C.lime:C.orange;ctx.fillRect(e.x-bw/2,e.y-e.r-10,bw*pct,4);
+    }
+  }
+  function drawTower(t,sel){
+    var x=t.c*CS,y=t.r*CS,d=TOW[t.type],col=tcol(t.type);
+    ctx.save();
+    if(t.off>0)ctx.globalAlpha=.4;
+    ctx.fillStyle=C.deep;rr(x+3,y+3,CS-6,CS-6,7);ctx.fill();
+    ctx.strokeStyle=col;ctx.lineWidth=2.5;rr(x+3,y+3,CS-6,CS-6,7);ctx.stroke();
+    ctx.fillStyle=col;rr(x+7,y+6,CS-14,4,2);ctx.fill();
+    ctx.fillStyle=C.ink;ctx.font='800 '+(d.abbr.length>3?10:12)+'px Manrope,sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(d.abbr,x+CS/2,y+CS/2+1);
+    var wb=df.wear;
+    ctx.fillStyle=C.lime;
+    for(var l=0;l<t.lv;l++){ctx.beginPath();ctx.arc(x+CS/2-7+l*7,y+(wb?CS-12:CS-9),2.2,0,6.2832);ctx.fill();}
+    if(wb){var bw=CS-16;ctx.fillStyle='rgba(147,160,207,.25)';ctx.fillRect(x+8,y+CS-8,bw,3);ctx.fillStyle=freshCol(t.fresh);ctx.fillRect(x+8,y+CS-8,bw*Math.max(0,t.fresh),3);}
+    ctx.restore();
+    if(t.off>0)drawIcon('ransom',x+CS-8,y+8,12,TH.ransom.col);
+    if(sel){ctx.strokeStyle=C.lime;ctx.lineWidth=2;rr(x,y,CS,CS,9);ctx.stroke();}
+  }
+  function ring(cx,cy,rad,stroke,fill,dash){
+    ctx.save();if(dash)ctx.setLineDash(dash);ctx.strokeStyle=stroke;ctx.lineWidth=1.5;
+    ctx.beginPath();ctx.arc(cx,cy,rad,0,6.2832);if(fill){ctx.fillStyle=fill;ctx.fill();}ctx.stroke();ctx.restore();
+  }
+  function wrapText(text,maxW){
+    var words=text.split(' '),lines=[],line='';
+    for(var i=0;i<words.length;i++){var t=line?line+' '+words[i]:words[i];if(ctx.measureText(t).width>maxW&&line){lines.push(line);line=words[i];}else line=t;}
+    if(line)lines.push(line);return lines;
+  }
+  function drawRoute(P,col,dash){
+    ctx.strokeStyle=col;ctx.lineWidth=2;ctx.setLineDash(dash);
+    ctx.beginPath();ctx.moveTo(P[0].x,P[0].y);for(var i=1;i<P.length;i++)ctx.lineTo(P[i].x,P[i].y);ctx.stroke();ctx.setLineDash([]);
+  }
+  function draw(){
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    ctx.fillStyle=C.navy;ctx.fillRect(0,0,W,H);
+    ctx.save();
+    if(shake>0)ctx.translate((Math.random()-.5)*shake,(Math.random()-.5)*shake);
+    var c,r,i,key,playing=state==='play'||state==='pause';
+    var bOpen=playing?wave+(waveOn?0:1)>=sc.second:false;
+    for(c=0;c<COLS;c++)for(r=0;r<ROWS;r++){
+      key=c+','+r;
+      if(onPath[key]){ctx.fillStyle='#101a40';ctx.fillRect(c*CS,r*CS,CS,CS);}
+      else if(onB[key]){ctx.fillStyle=bOpen?'#101a40':'rgba(16,26,64,.45)';ctx.fillRect(c*CS,r*CS,CS,CS);}
+      else if(pads[key]){ctx.strokeStyle=selShop?'rgba(175,251,51,.5)':'rgba(147,160,207,.3)';ctx.lineWidth=selShop?2:1;rr(c*CS+5,r*CS+5,CS-10,CS-10,6);ctx.stroke();}
+      else{ctx.fillStyle='rgba(147,160,207,.12)';ctx.fillRect(c*CS+CS/2-1,r*CS+CS/2-1,2,2);}
+    }
+    drawRoute(PA,'rgba(255,143,12,.3)',[6,8]);
+    drawRoute(PB,bOpen?'rgba(255,143,12,.3)':'rgba(147,160,207,.15)',[3,9]);
+    ctx.font='500 12px "JetBrains Mono",monospace';ctx.textAlign='left';ctx.textBaseline='alphabetic';ctx.fillStyle=C.muted;
+    ctx.fillText('ВХОД',3*CS+4,16);
+    ctx.textAlign='right';ctx.fillText(bOpen?'ВХОД 2':'ВХОД 2 · С '+sc.second+'-Й',W-4,CS*2+14);
+    ctx.textAlign='left';ctx.fillText('ЯДРО',6*CS+4,15*CS+26);
+    if(playing&&inScenario('lateral')){
+      var mp=PA[MID_I];ctx.strokeStyle=TH.lateral.col;ctx.globalAlpha=.55;ctx.setLineDash([2,3]);ctx.beginPath();ctx.arc(mp.x,mp.y,16,0,6.2832);ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=1;
+      ctx.fillStyle=C.muted;ctx.fillText('ЗАРАЖЁННЫЙ УЗЕЛ',mp.x-16,mp.y+34);
+    }
+    var cx=(CORE.c+.5)*CS,cy=(CORE.r+.5)*CS;
+    var g=ctx.createRadialGradient(cx,cy,2,cx,cy,70);
+    g.addColorStop(0,flashCore>0?'rgba(255,143,12,.55)':'rgba(33,118,255,.5)');g.addColorStop(1,'rgba(33,118,255,0)');
+    ctx.fillStyle=g;ctx.fillRect(cx-80,cy-80,160,160);
+    ctx.fillStyle=flashCore>0?C.orange:C.blue;rr(cx-17,cy-17,34,34,8);ctx.fill();
+    ctx.fillStyle=C.lime;ctx.beginPath();ctx.arc(cx,cy,6,0,6.2832);ctx.fill();
+
+    for(i=0;i<towers.length;i++){
+      var tt=TOW[towers[i].type],tp=tc(towers[i]),rg=tstats(towers[i]).range;
+      if(tt.reveals)ring(tp.x,tp.y,rg,'rgba(255,77,94,.3)','rgba(255,77,94,.04)',[4,6]);
+      else if(tt.protects)ring(tp.x,tp.y,rg,'rgba(214,163,106,.3)',null,[4,6]);
+    }
+    for(i=0;i<towers.length;i++)drawTower(towers[i],selTower===towers[i]);
+    if(selTower){var sp3=tc(selTower);ring(sp3.x,sp3.y,tstats(selTower).range,'rgba(175,251,51,.9)','rgba(175,251,51,.07)');}
+    for(i=0;i<beams.length;i++){
+      var bm=beams[i];
+      if(bm.col){ctx.strokeStyle=bm.col;ctx.lineWidth=3;}else{ctx.strokeStyle='rgba(147,160,207,.55)';ctx.lineWidth=1;}
+      ctx.beginPath();ctx.moveTo(bm.x1,bm.y1);ctx.lineTo(bm.x2,bm.y2);ctx.stroke();
+    }
+    for(i=0;i<enemies.length;i++)drawEnemy(enemies[i]);
+    for(i=0;i<bursts.length;i++){var q=bursts[i];ctx.globalAlpha=Math.max(0,q.life/.45);ctx.fillStyle=q.col;ctx.fillRect(q.x-2,q.y-2,4,4);}
+    ctx.globalAlpha=1;ctx.textBaseline='alphabetic';ctx.textAlign='center';
+    for(i=0;i<floats.length;i++){
+      var f=floats[i];ctx.globalAlpha=Math.min(1,f.life*2);ctx.fillStyle=f.col;
+      ctx.font=f.big?'700 19px Unbounded,Manrope,sans-serif':'700 14px Manrope,sans-serif';
+      ctx.fillText(f.txt,Math.min(W-80,Math.max(80,f.x)),f.y);
+    }
+    ctx.globalAlpha=1;
+    ctx.restore();
+
+    if(playing&&!waveOn&&wave<sc.waves){
+      ctx.font='700 15px Manrope,sans-serif';ctx.textAlign='center';ctx.fillStyle=countdown<6?C.orange:C.ink;
+      ctx.fillText('Волна '+(wave+1)+' через '+Math.ceil(countdown)+' с',W/2,CS*1.6);
+    }
+    if(banner){
+      var bx=16,by=H*.28,bw2=W-32,bc=banner.k==='boss'?C.boss:(banner.k?TH[banner.k].col:C.ink);
+      ctx.font='600 15px Manrope,sans-serif';
+      var lines=wrapText(banner.text,bw2-84);
+      var bh=74+lines.length*20;
+      ctx.globalAlpha=Math.min(1,banner.life*1.5);
+      ctx.fillStyle='rgba(10,18,48,.95)';rr(bx,by,bw2,bh,10);ctx.fill();
+      ctx.strokeStyle=bc;ctx.lineWidth=2;rr(bx,by,bw2,bh,10);ctx.stroke();
+      ctx.fillStyle=bc;ctx.beginPath();ctx.arc(bx+34,by+38,20,0,6.2832);ctx.fill();
+      if(banner.k)drawIcon(banner.k,bx+34,by+38,24,C.navy);
+      else{ctx.fillStyle=C.navy;ctx.font='800 18px Manrope,sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('!',bx+34,by+39);ctx.textBaseline='alphabetic';}
+      ctx.textAlign='left';ctx.fillStyle=bc;ctx.font='700 16px Unbounded,Manrope,sans-serif';
+      ctx.fillText(banner.title,bx+66,by+32,bw2-80);
+      ctx.fillStyle=C.ink;ctx.font='600 15px Manrope,sans-serif';
+      for(i=0;i<lines.length;i++)ctx.fillText(lines[i],bx+66,by+56+i*20);
+      ctx.fillStyle=C.lime;ctx.font='700 15px Manrope,sans-serif';
+      ctx.fillText(banner.hint,bx+66,by+58+lines.length*20+4,bw2-80);
+      ctx.globalAlpha=1;
+    }
+  }
+
+  // ---------- input ----------
+  function cellOf(e){
+    var r=cv.getBoundingClientRect();
+    return{c:Math.floor((e.clientX-r.left)*W/r.width/CS),r:Math.floor((e.clientY-r.top)*H/r.height/CS)};
+  }
+  cv.addEventListener('pointerdown',function(e){
+    e.preventDefault();
+    if(state!=='play')return;
+    var p=cellOf(e),t=towerAt(p.c,p.r);
+    if(t){selTower=t;selShop=null;haptic('tap');renderInfo();return;}
+    if(!pads[p.c+','+p.r]){if(selTower){selTower=null;renderInfo();}return;}
+    if(!selShop){selTower=null;renderInfo();floats.push({x:(p.c+.5)*CS,y:p.r*CS,txt:'Сначала выберите решение внизу',col:C.muted,life:1});return;}
+    var d=TOW[selShop];
+    if(money<d.cost){floats.push({x:(p.c+.5)*CS,y:p.r*CS,txt:'Не хватает бюджета',col:C.orange,life:.9});haptic('bad');return;}
+    money-=d.cost;
+    towers.push({type:selShop,c:p.c,r:p.r,lv:1,cd:0,spent:d.cost,fresh:1,off:0});
+    addBurst((p.c+.5)*CS,(p.r+.5)*CS,tcol(selShop),6);haptic('tap');
+    renderInfo();
+  });
+  cv.addEventListener('contextmenu',function(e){e.preventDefault();});
+  $('wavebtn').addEventListener('click',function(){startWave(true);});
+  $('speed').addEventListener('click',function(){speed=speed===1?2:1;this.textContent='×'+speed;this.setAttribute('aria-pressed',speed===2?'true':'false');});
+  $('pausebtn').addEventListener('click',function(){if(state==='play')pauseGame();else if(state==='pause'&&!silentPause)resumeGame();});
+  document.addEventListener('visibilitychange',function(){if(document.hidden&&state==='play')pauseGame();});
+
+  // ---------- HUD ----------
+  var L={};
+  function setTxt(id,v){if(L[id]!==v){$(id).textContent=v;L[id]=v;}}
+  function hud(){
+    var playing=state==='play'||state==='pause';
+    setTxt('wave',playing||state==='over'?wave+'/'+sc.waves:'—');
+    if(L.money!==money){L.money=money;$('money').textContent=money;syncDock();
+      var u=$('upb');if(u&&selTower)u.disabled=(selTower.lv>=3||money<upCost(selTower));
+      var rf=$('rfb');if(rf&&selTower)rf.disabled=money<refreshCost(selTower);}
+    setTxt('timer',state==='pause'?'пауза':!playing?'—':(waveOn?'идёт':(wave>=sc.waves?'—':Math.ceil(countdown)+' с')));
+    var iv=Math.round(integrity);
+    if(L.int!==iv){L.int=iv;$('intText').textContent=iv+'%';var f=$('intFill');f.style.width=iv+'%';f.classList.toggle('low',iv<35);}
+    var wb=$('wavebtn'),html;
+    if(!playing)html='Волна';
+    else if(waveOn)html='Волна '+wave+'<span class="sb">идёт</span>';
+    else if(wave>=sc.waves)html='Готово';
+    else html='Волна '+(wave+1)+(countdown>1?'<span class="sb">сейчас +'+Math.ceil(countdown)*2+'</span>':'');
+    if(L.wb!==html){wb.innerHTML=html;L.wb=html;}
+    var dis=waveOn||state!=='play';
+    if(L.dis!==dis){wb.disabled=dis;L.dis=dis;}
+  }
+
+  showMenu();fit();
+  if(document.fonts&&document.fonts.ready)document.fonts.ready.then(fit);
+  setTimeout(fit,300);
+  last=performance.now();
+  function frame(now){
+    var dt=Math.min(.1,(now-last)/1000);last=now;
+    for(var s=0;s<speed;s++)update(dt);
+    draw();hud();requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+  window.__ec={
+    get:function(){return{state:state,wave:wave,money:money,integrity:integrity,towers:towers.length,enemies:enemies.length,waveOn:waveOn,acc:stats&&stats.total?stats.match/stats.total:1,miss:stats?stats.miss:{},boss:stats?stats.bossLeak:false};},
+    next:function(){var c={};nextQ.forEach(function(q){c[q.t]=(c[q.t]||0)+1;});return c;},
+    pads:padList,towers:function(){return towers;},start:start,pick:function(k){selShop=k;selTower=null;renderInfo();},
+    hurt:function(v){integrity=v;},up:doUpgrade,refresh:doRefresh,startWave:function(){startWave(true);},sc:function(){return sc;}
+  };
+})();
+</script>
+</body>
+</html>
