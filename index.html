@@ -1,0 +1,1047 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Puzzle Defender</title>
+<meta name="theme-color" content="#0a1230">
+<meta name="format-detection" content="telephone=no">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Manrope:wght@400;600;700;800&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Mobile-first layout for Telegram Mini App: one screen, no page scroll.
+   Top bar, stat strip with pause, integrity meter, then the playfield fills the rest.
+   Start/pause/result screens and the threat & bonus guide open full-screen above the game. */
+:root{
+  --bg:#0a1230;
+  --surface:#101a40;
+  --surface2:#16245a;
+  --line:#22306a;
+  --fg:#eef2ff;
+  --muted:#93a0cf;
+  --threat:#ff8f0c;
+  --good:#affb33;
+  --core:#2176ff;
+  --font-display:"Unbounded","Arial Black",sans-serif;
+  --font-body:"Manrope",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+  --sa-top:calc(env(safe-area-inset-top,0px) + var(--tg-content-safe-area-inset-top,0px) + var(--tg-safe-area-inset-top,0px));
+  --sa-bottom:calc(env(safe-area-inset-bottom,0px) + var(--tg-content-safe-area-inset-bottom,0px) + var(--tg-safe-area-inset-bottom,0px));
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--fg);
+  font-family:var(--font-body);
+  font-size:15px;
+  line-height:1.5;
+  overflow:hidden;
+  overscroll-behavior:none;
+  touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
+  -webkit-user-select:none;user-select:none;
+  -webkit-text-size-adjust:100%;
+}
+button{font:inherit;-webkit-tap-highlight-color:transparent}
+
+.app{
+  height:var(--app-h,100vh);height:var(--app-h,100dvh);
+  max-width:560px;margin:0 auto;
+  display:flex;flex-direction:column;gap:8px;
+  padding:calc(8px + var(--sa-top)) max(12px,env(safe-area-inset-right,0px)) calc(10px + var(--sa-bottom)) max(12px,env(safe-area-inset-left,0px));
+}
+.top{display:flex;align-items:center;gap:10px;flex:none}
+.mark{width:26px;height:26px;flex:none;display:block}
+.top h1{margin:0;font-family:var(--font-display);font-weight:700;font-size:14px;letter-spacing:.02em;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.icon-btn{appearance:none;cursor:pointer;width:40px;height:40px;flex:none;display:grid;place-items:center;background:transparent;color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:0}
+.icon-btn:active{background:var(--surface)}
+.icon-btn[disabled]{opacity:.35}
+.icon-btn[aria-pressed="true"]{border-color:var(--good);color:var(--good)}
+
+.hud{display:grid;grid-template-columns:repeat(3,1fr) auto;align-items:center;gap:0;flex:none;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:6px 6px 6px 12px}
+.stat{display:flex;flex-direction:column;gap:0;padding-left:10px;border-left:1px solid var(--line);min-width:0}
+.stat:first-child{padding-left:0;border-left:0}
+.k{font-family:var(--font-mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.v{font-family:var(--font-display);font-weight:700;font-size:17px;line-height:1.25;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+.meter{display:flex;align-items:center;gap:10px;flex:none}
+.meter span{font-size:11px;color:var(--muted);white-space:nowrap}
+.meter b{font-family:var(--font-mono);font-weight:500;font-size:12px;color:var(--fg);font-variant-numeric:tabular-nums;min-width:38px;text-align:right}
+.track{flex:1;height:8px;background:var(--surface);border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.fill{height:100%;width:100%;background:var(--good);transition:width .25s ease,background-color .25s ease}
+.fill.low{background:var(--threat)}
+
+.stage{flex:1;min-height:0;display:flex;align-items:center;justify-content:center}
+.field{position:relative;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--bg);width:100%;aspect-ratio:3/4}
+canvas{display:block;width:100%;height:100%;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+
+/* full-screen screens: start, pause, result */
+.overlay{position:fixed;inset:0;z-index:10;display:flex;flex-direction:column;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;
+  padding:calc(20px + var(--sa-top)) 20px calc(20px + var(--sa-bottom));background:rgba(10,18,48,.94);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
+.ov{margin:auto;display:flex;flex-direction:column;align-items:center;text-align:center;gap:12px;width:100%;max-width:400px}
+.logo-full{height:30px;width:auto;display:block;margin-bottom:6px}
+.ov h2{margin:0;font-family:var(--font-display);font-weight:700;font-size:22px;line-height:1.2;text-wrap:balance}
+.ov p{margin:0;color:var(--muted);font-size:14px}
+.ov p b{color:var(--fg)}
+.lbl{font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.btn{
+  appearance:none;border:0;cursor:pointer;
+  background:var(--good);color:var(--bg);
+  font-family:var(--font-display);font-weight:700;font-size:14px;letter-spacing:.02em;
+  min-height:52px;padding:14px 22px;border-radius:10px;
+  transition:transform .12s ease;
+}
+.btn:active{transform:scale(.98)}
+.btn:focus-visible{outline:2px solid var(--good);outline-offset:3px}
+.btn.ghost{background:transparent;color:var(--fg);border:1px solid var(--line)}
+.acts{display:flex;flex-direction:column;gap:10px;width:100%;margin-top:4px}
+.acts .btn{width:100%}
+.how{display:flex;flex-direction:column;gap:8px;width:100%;text-align:left;margin:4px 0}
+.how div{display:flex;gap:10px;align-items:flex-start;font-size:13px;color:var(--muted);background:var(--surface);border-radius:8px;padding:9px 11px}
+.how b{color:var(--fg)}
+.how i{flex:none;font-style:normal;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:800;color:var(--bg)}
+.stars{font-size:30px;letter-spacing:6px;color:var(--good);line-height:1}
+.stars i{font-style:normal;color:var(--line)}
+.rep{display:grid;grid-template-columns:1fr auto;gap:5px 14px;margin:0;width:100%;font-size:13px;text-align:left;background:var(--surface);border-radius:10px;padding:12px 14px}
+.rep dt{color:var(--muted)}
+.rep dd{margin:0;font-family:var(--font-mono);font-size:12px;text-align:right;font-variant-numeric:tabular-nums}
+.recs{display:flex;flex-direction:column;gap:8px;width:100%;text-align:left}
+.rec{border-left:3px solid var(--pc);background:var(--surface);padding:10px 12px;border-radius:6px;font-size:12.5px;color:var(--muted);line-height:1.45;-webkit-user-select:text;user-select:text}
+.rec b{color:var(--fg)}
+.rec .pz{display:block;margin-top:6px;color:var(--fg)}
+.rec .pz a{color:var(--good);font-weight:700}
+
+/* guide: threats & bonuses */
+.sheet{position:fixed;inset:0;z-index:20;background:var(--bg);display:flex;flex-direction:column;padding-top:var(--sa-top)}
+.sheet-top{display:flex;align-items:center;gap:10px;padding:10px 12px 10px 16px;border-bottom:1px solid var(--line);flex:none}
+.sheet-top h2{margin:0;flex:1;font-family:var(--font-display);font-size:15px}
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:10px 12px;flex:none}
+.tab{appearance:none;cursor:pointer;min-height:40px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--muted);font-weight:700;font-size:13px}
+.tab[aria-selected="true"]{background:var(--surface2);color:var(--fg);border-color:var(--surface2)}
+.sheet-body{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;padding:4px 12px calc(16px + var(--sa-bottom))}
+.list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.list li{display:flex;gap:12px;align-items:flex-start;background:var(--surface);border-radius:10px;padding:11px 12px}
+.list b{display:block;font-size:14px;line-height:1.3}
+.list small{display:block;color:var(--muted);font-size:12.5px;line-height:1.4;margin-top:3px}
+.list em{display:block;font-style:normal;color:var(--good);font-size:12.5px;line-height:1.4;margin-top:4px}
+.list .tag{display:inline-block;font-family:var(--font-mono);font-size:10px;color:var(--muted);letter-spacing:.06em;margin-top:4px}
+.dot{flex:none;width:14px;height:14px;border-radius:50%;margin-top:3px}
+.chip{flex:none;min-width:56px;text-align:center;background:var(--good);color:var(--bg);font-family:var(--font-display);font-weight:700;font-size:10px;padding:5px 6px;border-radius:4px;margin-top:1px}
+
+@media (min-height:760px){
+  .v{font-size:19px}
+  .app{gap:10px}
+}
+@media (max-width:360px){
+  .meter span{display:none}
+  .v{font-size:15px}
+}
+@media (prefers-reduced-motion:reduce){
+  .fill,.btn{transition:none}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <svg class="mark" viewBox="0 0 153 153" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+<path d="M0.150005 132.408C0.150005 121.83 7.94225 113.36 18.5954 112.814C27.517 112.362 35.648 110.122 42.8003 104.495C59.7212 91.1501 60.8693 64.7995 45.0966 49.9679C38.189 43.4743 30.0203 40.2746 20.5717 39.8982C12.3466 39.5782 5.81538 36.0585 2.14512 28.4921C-1.33692 21.3398 -0.50876 14.3005 4.14024 7.78809C8.48808 1.70863 16.9015 -1.26522 24.4867 0.541676C32.053 2.34857 38.1137 8.63507 39.2995 15.9191C40.1653 21.1892 40.3347 26.6852 42.0474 31.6542C46.5459 44.7354 55.9568 52.697 69.5838 55.4074C72.9717 56.085 76.4914 56.1414 79.8982 56.7625C87.5022 58.1554 92.6029 62.7667 95.0121 69.9378C97.5531 77.5042 95.8403 84.393 90.2878 90.209C86.2223 94.4815 81.0463 96.0814 75.3621 96.1379C59.0436 96.3073 43.1956 108.579 40.2594 127.1C39.77 130.168 39.9017 133.349 39.2995 136.379C37.342 146.336 28.0252 153.281 18.2378 152.302C7.77285 151.248 0.150005 142.873 0.150005 132.408Z" fill="#FF8F0C"/>
+<path d="M19.5937 56.6497C30.5857 56.6497 39.1121 65.2137 39.0933 76.2622C39.0933 87.066 30.4352 95.743 19.6313 95.7618C8.75223 95.7806 0 87.0472 0 76.2057C0 65.2513 8.6393 56.6497 19.5937 56.6309V56.6497Z" fill="#AFFB33"/>
+<path d="M133.035 113.282C144.027 113.282 152.554 121.847 152.535 132.895C152.535 143.699 143.877 152.376 133.073 152.395C122.194 152.413 113.441 143.68 113.441 132.839C113.441 121.884 122.081 113.282 133.035 113.264V113.282Z" fill="#2176FF"/>
+<path d="M136.234 56.7621C132.827 56.1409 129.326 56.0845 125.919 55.4069C112.292 52.6777 102.881 44.7349 98.3829 31.6537C97.837 30.035 98.3829 28.2658 99.7757 27.2682C102.561 25.2355 106.326 25.179 109.187 27.0988L120.48 34.684L120.913 35.004C124.244 37.6014 128.46 39.1448 133.034 39.1448C143.819 39.126 152.477 30.4491 152.496 19.6454C152.515 8.57812 143.988 0.0141738 133.015 0.0141738C128.328 0.0141738 124.075 1.59521 120.724 4.24909L109.262 12.399C106.382 14.4505 102.524 14.4317 99.6628 12.3425L88.5767 4.28673C86.3369 2.51748 83.7018 1.19995 80.8409 0.522364C73.2557 -1.28453 64.8423 1.70814 60.5133 7.76878C55.8455 14.2811 55.0173 21.3205 58.5182 28.5105C62.1885 36.0768 68.7196 39.5965 76.9448 39.9165C86.3934 40.2741 94.562 43.4927 101.47 49.9862C117.242 64.8178 116.094 91.1496 99.1734 104.513C92.0211 110.16 83.9089 112.381 74.9685 112.832C64.3153 113.378 56.5231 121.829 56.5231 132.426C56.5231 142.891 64.1459 151.267 74.6109 152.321C84.3982 153.299 93.7151 146.354 95.6725 136.397C96.2748 133.367 96.1431 130.186 96.6324 127.118C99.5687 108.579 115.417 96.3068 131.735 96.1562C137.438 96.0997 142.595 94.4999 146.661 90.2273C152.213 84.3925 153.926 77.5037 151.385 69.9562C148.976 62.7851 143.875 58.1737 136.271 56.7809L136.234 56.7621Z" fill="#2176FF"/>
+</svg>
+    <h1>Puzzle Defender</h1>
+    <button class="icon-btn" id="infobtn" type="button" aria-label="Угрозы и бонусы"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M12 11v6M12 7.5v.5"/></svg></button>
+  </header>
+
+  <section class="hud" aria-label="Показатели игры">
+    <div class="stat"><span class="k">Счёт</span><span class="v" id="score">0</span></div>
+    <div class="stat"><span class="k">Волна</span><span class="v" id="wave">1/12</span></div>
+    <div class="stat"><span class="k">Рекорд</span><span class="v" id="best">0</span></div>
+    <button class="icon-btn" id="pausebtn" type="button" aria-label="Пауза" disabled><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><rect x="2" y="1" width="3.5" height="12" rx="1" fill="currentColor"/><rect x="8.5" y="1" width="3.5" height="12" rx="1" fill="currentColor"/></svg></button>
+  </section>
+
+  <div class="meter">
+    <span>Целостность</span>
+    <div class="track"><div class="fill" id="intFill"></div></div>
+    <b id="intText">100%</b>
+  </div>
+
+  <div class="stage" id="stage">
+    <div class="field" id="fieldbox">
+      <canvas id="field" aria-label="Игровое поле: нажимайте на падающие угрозы, чтобы нейтрализовать их"></canvas>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="ov" id="ov">
+        <svg class="logo-full" role="img" aria-label="Puzzle Systems" viewBox="0 0 498 165" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M0.150005 132.408C0.150005 121.83 7.94225 113.36 18.5954 112.814C27.517 112.362 35.648 110.122 42.8003 104.495C59.7212 91.1501 60.8693 64.7995 45.0966 49.9679C38.189 43.4743 30.0203 40.2746 20.5717 39.8982C12.3466 39.5782 5.81538 36.0585 2.14512 28.4921C-1.33692 21.3398 -0.50876 14.3005 4.14024 7.78809C8.48808 1.70863 16.9015 -1.26522 24.4867 0.541676C32.053 2.34857 38.1137 8.63507 39.2995 15.9191C40.1653 21.1892 40.3347 26.6852 42.0474 31.6542C46.5459 44.7354 55.9568 52.697 69.5838 55.4074C72.9717 56.085 76.4914 56.1414 79.8982 56.7625C87.5022 58.1554 92.6029 62.7667 95.0121 69.9378C97.5531 77.5042 95.8403 84.393 90.2878 90.209C86.2223 94.4815 81.0463 96.0814 75.3621 96.1379C59.0436 96.3073 43.1956 108.579 40.2594 127.1C39.77 130.168 39.9017 133.349 39.2995 136.379C37.342 146.336 28.0252 153.281 18.2378 152.302C7.77285 151.248 0.150005 142.873 0.150005 132.408Z" fill="#FF8F0C"/>
+<path d="M19.5937 56.6497C30.5857 56.6497 39.1121 65.2137 39.0933 76.2622C39.0933 87.066 30.4352 95.743 19.6313 95.7618C8.75223 95.7806 0 87.0472 0 76.2057C0 65.2513 8.6393 56.6497 19.5937 56.6309V56.6497Z" fill="#AFFB33"/>
+<path d="M133.035 113.282C144.027 113.282 152.554 121.847 152.535 132.895C152.535 143.699 143.877 152.376 133.073 152.395C122.194 152.413 113.441 143.68 113.441 132.839C113.441 121.884 122.081 113.282 133.035 113.264V113.282Z" fill="#2176FF"/>
+<path d="M136.234 56.7621C132.827 56.1409 129.326 56.0845 125.919 55.4069C112.292 52.6777 102.881 44.7349 98.3829 31.6537C97.837 30.035 98.3829 28.2658 99.7757 27.2682C102.561 25.2355 106.326 25.179 109.187 27.0988L120.48 34.684L120.913 35.004C124.244 37.6014 128.46 39.1448 133.034 39.1448C143.819 39.126 152.477 30.4491 152.496 19.6454C152.515 8.57812 143.988 0.0141738 133.015 0.0141738C128.328 0.0141738 124.075 1.59521 120.724 4.24909L109.262 12.399C106.382 14.4505 102.524 14.4317 99.6628 12.3425L88.5767 4.28673C86.3369 2.51748 83.7018 1.19995 80.8409 0.522364C73.2557 -1.28453 64.8423 1.70814 60.5133 7.76878C55.8455 14.2811 55.0173 21.3205 58.5182 28.5105C62.1885 36.0768 68.7196 39.5965 76.9448 39.9165C86.3934 40.2741 94.562 43.4927 101.47 49.9862C117.242 64.8178 116.094 91.1496 99.1734 104.513C92.0211 110.16 83.9089 112.381 74.9685 112.832C64.3153 113.378 56.5231 121.829 56.5231 132.426C56.5231 142.891 64.1459 151.267 74.6109 152.321C84.3982 153.299 93.7151 146.354 95.6725 136.397C96.2748 133.367 96.1431 130.186 96.6324 127.118C99.5687 108.579 115.417 96.3068 131.735 96.1562C137.438 96.0997 142.595 94.4999 146.661 90.2273C152.213 84.3925 153.926 77.5037 151.385 69.9562C148.976 62.7851 143.875 58.1737 136.271 56.7809L136.234 56.7621Z" fill="#2176FF"/>
+<path d="M210.088 57.2389V95.1523H200.584V61.3841L204.932 65.681H175.915L180.212 61.3841V95.1523H170.658V57.2389H210.088ZM224.331 87.5191V79.8353H250.517V87.5191H224.331ZM243.844 57.2389L261.335 95.1523H251.174L236.16 61.2325H239.092L224.129 95.1523H213.968L231.459 57.2389H243.844ZM281.007 95.9612C277.064 95.9612 273.61 95.4051 270.644 94.293C267.678 93.1808 265.37 91.6138 263.719 89.5917C262.067 87.536 261.174 85.1432 261.039 82.4134H270.593C270.863 84.4018 271.874 85.9352 273.627 87.0136C275.379 88.0583 277.839 88.5807 281.007 88.5807C283.973 88.5807 286.264 88.1594 287.882 87.3169C289.533 86.4744 290.359 85.2106 290.359 83.5256C290.359 82.0764 289.668 81.0148 288.286 80.3408C286.905 79.6668 284.664 79.3298 281.563 79.3298H274.435V72.9603H281.411C283.265 72.9603 284.782 72.775 285.961 72.4043C287.141 72.0336 288.017 71.5112 288.59 70.8372C289.163 70.1295 289.449 69.3544 289.449 68.5118C289.449 67.5008 289.112 66.6414 288.438 65.9337C287.764 65.226 286.804 64.7036 285.557 64.3666C284.31 63.9959 282.81 63.8106 281.058 63.8106C278.193 63.8106 275.918 64.3329 274.233 65.3777C272.582 66.3887 271.605 67.821 271.301 69.6745H261.848C262.017 67.2144 262.876 64.9901 264.426 63.0017C266.01 61.0134 268.234 59.4295 271.099 58.2499C273.964 57.0367 277.435 56.4301 281.513 56.4301C285.085 56.4301 288.185 56.885 290.814 57.795C293.443 58.7049 295.482 59.9518 296.931 61.5358C298.414 63.1197 299.155 64.9564 299.155 67.0458C299.155 68.7646 298.633 70.3485 297.588 71.7977C296.577 73.2468 294.976 74.3926 292.785 75.2351C290.629 76.0777 287.831 76.4821 284.394 76.4484V75.4374C287.663 75.2689 290.46 75.5048 292.785 76.1451C295.145 76.7517 296.948 77.729 298.194 79.077C299.475 80.4251 300.115 82.1438 300.115 84.2333C300.115 86.5249 299.374 88.5638 297.891 90.35C296.408 92.1024 294.235 93.4842 291.37 94.4952C288.539 95.4725 285.085 95.9612 281.007 95.9612ZM311.551 57.2389H347.999V95.1523H338.444V61.3841L342.741 65.681H316.859L320.903 62.4962C321.139 64.8553 321.307 67.1132 321.409 69.2701C321.543 71.3933 321.611 73.4153 321.611 75.3363C321.611 80.1555 321.173 84.0816 320.296 87.1147C319.454 90.1141 318.106 92.3383 316.252 93.7875C314.432 95.2029 312.057 95.9106 309.125 95.9106C307.878 95.9106 306.648 95.7758 305.434 95.5062C304.221 95.2366 303.126 94.849 302.149 94.3435V86.407C303.631 86.9799 304.996 87.2663 306.243 87.2663C308.501 87.2663 310.119 86.2385 311.096 84.1827C312.107 82.0933 312.613 78.6895 312.613 73.9714C312.613 71.7471 312.528 69.2533 312.36 66.4898C312.191 63.6926 311.922 60.609 311.551 57.2389Z" fill="white"/>
+<path d="M212.262 135.517C211.891 138.786 210.762 141.667 208.875 144.161C206.988 146.621 204.494 148.542 201.393 149.924C198.293 151.305 194.754 151.996 190.777 151.996C186.43 151.996 182.605 151.171 179.302 149.519C176.033 147.868 173.489 145.559 171.669 142.594C169.849 139.628 168.939 136.174 168.939 132.231C168.939 128.288 169.849 124.833 171.669 121.868C173.489 118.902 176.033 116.594 179.302 114.942C182.605 113.291 186.43 112.465 190.777 112.465C194.754 112.465 198.293 113.156 201.393 114.538C204.494 115.92 206.988 117.841 208.875 120.301C210.762 122.761 211.891 125.642 212.262 128.945H202.657C202.32 127.226 201.629 125.76 200.584 124.547C199.573 123.334 198.225 122.407 196.54 121.767C194.889 121.093 192.968 120.756 190.777 120.756C188.25 120.756 186.076 121.227 184.256 122.171C182.436 123.081 181.038 124.395 180.061 126.114C179.083 127.833 178.595 129.872 178.595 132.231C178.595 134.59 179.083 136.629 180.061 138.347C181.038 140.066 182.436 141.397 184.256 142.341C186.076 143.251 188.25 143.706 190.777 143.706C192.968 143.706 194.889 143.386 196.54 142.745C198.225 142.105 199.573 141.178 200.584 139.965C201.629 138.752 202.32 137.269 202.657 135.517H212.262ZM217.606 151.188V113.274H227.008V146.233L224.228 145.677L246.976 113.274H259.411V151.188H250.059V117.672L252.789 118.228L229.738 151.188H217.606ZM308.378 135.517C308.007 138.786 306.878 141.667 304.991 144.161C303.104 146.621 300.61 148.542 297.51 149.924C294.409 151.305 290.871 151.996 286.894 151.996C282.546 151.996 278.721 151.171 275.419 149.519C272.15 147.868 269.605 145.559 267.786 142.594C265.966 139.628 265.056 136.174 265.056 132.231C265.056 128.288 265.966 124.833 267.786 121.868C269.605 118.902 272.15 116.594 275.419 114.942C278.721 113.291 282.546 112.465 286.894 112.465C290.871 112.465 294.409 113.156 297.51 114.538C300.61 115.92 303.104 117.841 304.991 120.301C306.878 122.761 308.007 125.642 308.378 128.945H298.773C298.436 127.226 297.746 125.76 296.701 124.547C295.69 123.334 294.342 122.407 292.657 121.767C291.005 121.093 289.084 120.756 286.894 120.756C284.366 120.756 282.193 121.227 280.373 122.171C278.553 123.081 277.154 124.395 276.177 126.114C275.2 127.833 274.711 129.872 274.711 132.231C274.711 134.59 275.2 136.629 276.177 138.347C277.154 140.066 278.553 141.397 280.373 142.341C282.193 143.251 284.366 143.706 286.894 143.706C289.084 143.706 291.005 143.386 292.657 142.745C294.342 142.105 295.69 141.178 296.701 139.965C297.746 138.752 298.436 137.269 298.773 135.517H308.378ZM324.172 117.47H333.726V151.188H324.172V117.47ZM309.411 113.274H348.487V121.716H309.411V113.274ZM384.965 128.692V135.769H357.516V128.692H384.965ZM363.986 132.231L361.459 147.902L357.465 143.403H386.583V151.188H351.904L354.836 132.231L351.904 113.274H386.33V121.059H357.465L361.459 116.56L363.986 132.231ZM447.199 113.274V151.188H438.1V116.61L440.324 116.762L424.906 151.188H415.15L399.731 116.863L401.956 116.661V151.188H392.856V113.274H407.567L421.974 146.436H418.132L432.489 113.274H447.199ZM496.168 135.517C495.797 138.786 494.669 141.667 492.781 144.161C490.894 146.621 488.4 148.542 485.3 149.924C482.199 151.305 478.661 151.996 474.684 151.996C470.336 151.996 466.511 151.171 463.209 149.519C459.94 147.868 457.395 145.559 455.576 142.594C453.756 139.628 452.846 136.174 452.846 132.231C452.846 128.288 453.756 124.833 455.576 121.868C457.395 118.902 459.94 116.594 463.209 114.942C466.511 113.291 470.336 112.465 474.684 112.465C478.661 112.465 482.199 113.156 485.3 114.538C488.4 115.92 490.894 117.841 492.781 120.301C494.669 122.761 495.797 125.642 496.168 128.945H486.563C486.226 127.226 485.536 125.76 484.491 124.547C483.48 123.334 482.132 122.407 480.447 121.767C478.795 121.093 476.874 120.756 474.684 120.756C472.156 120.756 469.983 121.227 468.163 122.171C466.343 123.081 464.944 124.395 463.967 126.114C462.99 127.833 462.501 129.872 462.501 132.231C462.501 134.59 462.99 136.629 463.967 138.347C464.944 140.066 466.343 141.397 468.163 142.341C469.983 143.251 472.156 143.706 474.684 143.706C476.874 143.706 478.795 143.386 480.447 142.745C482.132 142.105 483.48 141.178 484.491 139.965C485.536 138.752 486.226 137.269 486.563 135.517H496.168Z" fill="white"/>
+</svg>
+    <h2>Защитите периметр</h2>
+    <div class="how">
+      <div><i style="background:#FF4D5E">1</i><span><b>Нажимайте на угрозы</b>, пока они не долетели до периметра внизу.</span></div>
+      <div><i style="background:#AFFB33">2</i><span><b>Ловите зелёные бонусы</b>: каждое решение снимает свой тип угроз.</span></div>
+      <div><i style="background:#F472D0">3</i><span><b>Продержитесь 12 волн.</b> В последней придёт целевая атака.</span></div>
+    </div>
+    <div class="acts">
+      <button class="btn" id="go" type="button">Начать игру</button>
+      <button class="btn ghost" id="info0" type="button">Угрозы и бонусы</button>
+    </div>
+    <noscript><p style="color:var(--threat)">Игра не запускается: в браузере отключены скрипты.</p></noscript>
+  </div>
+</div>
+
+<div class="sheet" id="sheet" hidden role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+  <div class="sheet-top">
+    <h2 id="sheetTitle">Справочник</h2>
+    <button class="icon-btn" id="sheetClose" type="button" aria-label="Закрыть"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  </div>
+  <div class="tabs" role="tablist">
+    <button class="tab" id="tabT" type="button" role="tab" aria-selected="true">Угрозы</button>
+    <button class="tab" id="tabB" type="button" role="tab" aria-selected="false">Решения-бонусы</button>
+  </div>
+  <div class="sheet-body" id="sheetBody">
+    <ul class="list" id="threatlist"></ul>
+    <ul class="list" id="bonuslist" hidden></ul>
+  </div>
+</div>
+
+<script>
+(function(){
+  var W=480,H=640,LINE=548,WAVES=12,WAVE_LEN=15;
+  var C={orange:'#FF8F0C',lime:'#AFFB33',blue:'#2176FF',navy:'#0a1230',ink:'#eef2ff',muted:'#93a0cf',boss:'#F472D0'};
+  var SITE='https://puzzle.systems/';
+  var tg=(window.Telegram&&window.Telegram.WebApp)||null;
+  var inTg=!!(tg&&tg.platform&&tg.platform!=='unknown');
+  function tgv(v){try{return inTg&&tg.isVersionAtLeast(v);}catch(e){return false;}}
+  if(tg){
+    try{tg.ready();}catch(e){}
+    try{tg.expand();}catch(e){}
+    if(tgv('7.7'))try{tg.disableVerticalSwipes();}catch(e){}
+    if(tgv('6.9'))try{tg.setHeaderColor('#0a1230');tg.setBackgroundColor('#0a1230');}catch(e){}
+    if(tgv('7.10'))try{tg.setBottomBarColor('#0a1230');}catch(e){}
+  }
+  var lastBuzz=0;
+  function buzz(kind,style){
+    var now=Date.now();
+    if(kind==='impact'&&now-lastBuzz<60)return;
+    lastBuzz=now;
+    try{
+      if(tgv('6.1')&&tg.HapticFeedback){
+        if(kind==='impact')tg.HapticFeedback.impactOccurred(style);
+        else tg.HapticFeedback.notificationOccurred(style);
+      }else if(navigator.vibrate&&kind!=='impact'){navigator.vibrate(style==='error'?40:20);}
+    }catch(e){}
+  }
+  function openExt(url){
+    try{if(inTg){tg.openLink(url);return true;}}catch(e){}
+    return false;
+  }
+  var cv=document.getElementById('field'),ctx=cv.getContext('2d');
+  var calm=!!(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  function $(id){return document.getElementById(id);}
+
+  var dpr=Math.min(window.devicePixelRatio||1,2);
+  cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);
+
+  var icon=new Image(),iconReady=false;
+  icon.onload=function(){iconReady=true;};
+  icon.src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNTQiIGhlaWdodD0iMTUzIiB2aWV3Qm94PSIwIDAgMTU0IDE1MyIgZmlsbD0ibm9uZSI+PHBhdGggZD0iTTAuMTUwMDA1IDEzMi40MDhDMC4xNTAwMDUgMTIxLjgzIDcuOTQyMjUgMTEzLjM2IDE4LjU5NTQgMTEyLjgxNEMyNy41MTcgMTEyLjM2MiAzNS42NDggMTEwLjEyMiA0Mi44MDAzIDEwNC40OTVDNTkuNzIxMiA5MS4xNTAxIDYwLjg2OTMgNjQuNzk5NSA0NS4wOTY2IDQ5Ljk2NzlDMzguMTg5IDQzLjQ3NDMgMzAuMDIwMyA0MC4yNzQ2IDIwLjU3MTcgMzkuODk4MkMxMi4zNDY2IDM5LjU3ODIgNS44MTUzOCAzNi4wNTg1IDIuMTQ1MTIgMjguNDkyMUMtMS4zMzY5MiAyMS4zMzk4IC0wLjUwODc2IDE0LjMwMDUgNC4xNDAyNCA3Ljc4ODA5QzguNDg4MDggMS43MDg2MyAxNi45MDE1IC0xLjI2NTIyIDI0LjQ4NjcgMC41NDE2NzZDMzIuMDUzIDIuMzQ4NTcgMzguMTEzNyA4LjYzNTA3IDM5LjI5OTUgMTUuOTE5MUM0MC4xNjUzIDIxLjE4OTIgNDAuMzM0NyAyNi42ODUyIDQyLjA0NzQgMzEuNjU0MkM0Ni41NDU5IDQ0LjczNTQgNTUuOTU2OCA1Mi42OTcgNjkuNTgzOCA1NS40MDc0QzcyLjk3MTcgNTYuMDg1IDc2LjQ5MTQgNTYuMTQxNCA3OS44OTgyIDU2Ljc2MjVDODcuNTAyMiA1OC4xNTU0IDkyLjYwMjkgNjIuNzY2NyA5NS4wMTIxIDY5LjkzNzhDOTcuNTUzMSA3Ny41MDQyIDk1Ljg0MDMgODQuMzkzIDkwLjI4NzggOTAuMjA5Qzg2LjIyMjMgOTQuNDgxNSA4MS4wNDYzIDk2LjA4MTQgNzUuMzYyMSA5Ni4xMzc5QzU5LjA0MzYgOTYuMzA3MyA0My4xOTU2IDEwOC41NzkgNDAuMjU5NCAxMjcuMUMzOS43NyAxMzAuMTY4IDM5LjkwMTcgMTMzLjM0OSAzOS4yOTk1IDEzNi4zNzlDMzcuMzQyIDE0Ni4zMzYgMjguMDI1MiAxNTMuMjgxIDE4LjIzNzggMTUyLjMwMkM3Ljc3Mjg1IDE1MS4yNDggMC4xNTAwMDUgMTQyLjg3MyAwLjE1MDAwNSAxMzIuNDA4WiIgZmlsbD0iI0ZGOEYwQyIvPjxwYXRoIGQ9Ik0xOS41OTM3IDU2LjY0OTdDMzAuNTg1NyA1Ni42NDk3IDM5LjExMjEgNjUuMjEzNyAzOS4wOTMzIDc2LjI2MjJDMzkuMDkzMyA4Ny4wNjYgMzAuNDM1MiA5NS43NDMgMTkuNjMxMyA5NS43NjE4QzguNzUyMjMgOTUuNzgwNiAwIDg3LjA0NzIgMCA3Ni4yMDU3QzAgNjUuMjUxMyA4LjYzOTMgNTYuNjQ5NyAxOS41OTM3IDU2LjYzMDlWNTYuNjQ5N1oiIGZpbGw9IiNBRkZCMzMiLz48cGF0aCBkPSJNMTMzLjAzNSAxMTMuMjgyQzE0NC4wMjcgMTEzLjI4MiAxNTIuNTU0IDEyMS44NDcgMTUyLjUzNSAxMzIuODk1QzE1Mi41MzUgMTQzLjY5OSAxNDMuODc3IDE1Mi4zNzYgMTMzLjA3MyAxNTIuMzk1QzEyMi4xOTQgMTUyLjQxMyAxMTMuNDQxIDE0My42OCAxMTMuNDQxIDEzMi44MzlDMTEzLjQ0MSAxMjEuODg0IDEyMi4wODEgMTEzLjI4MiAxMzMuMDM1IDExMy4yNjRWMTEzLjI4MloiIGZpbGw9IiMyMTc2RkYiLz48cGF0aCBkPSJNMTM2LjIzNCA1Ni43NjIxQzEzMi44MjcgNTYuMTQwOSAxMjkuMzI2IDU2LjA4NDUgMTI1LjkxOSA1NS40MDY5QzExMi4yOTIgNTIuNjc3NyAxMDIuODgxIDQ0LjczNDkgOTguMzgyOSAzMS42NTM3Qzk3LjgzNyAzMC4wMzUgOTguMzgyOSAyOC4yNjU4IDk5Ljc3NTcgMjcuMjY4MkMxMDIuNTYxIDI1LjIzNTUgMTA2LjMyNiAyNS4xNzkgMTA5LjE4NyAyNy4wOTg4TDEyMC40OCAzNC42ODRMMTIwLjkxMyAzNS4wMDRDMTI0LjI0NCAzNy42MDE0IDEyOC40NiAzOS4xNDQ4IDEzMy4wMzQgMzkuMTQ0OEMxNDMuODE5IDM5LjEyNiAxNTIuNDc3IDMwLjQ0OTEgMTUyLjQ5NiAxOS42NDU0QzE1Mi41MTUgOC41NzgxMiAxNDMuOTg4IDAuMDE0MTczOCAxMzMuMDE1IDAuMDE0MTczOEMxMjguMzI4IDAuMDE0MTczOCAxMjQuMDc1IDEuNTk1MjEgMTIwLjcyNCA0LjI0OTA5TDEwOS4yNjIgMTIuMzk5QzEwNi4zODIgMTQuNDUwNSAxMDIuNTI0IDE0LjQzMTcgOTkuNjYyOCAxMi4zNDI1TDg4LjU3NjcgNC4yODY3M0M4Ni4zMzY5IDIuNTE3NDggODMuNzAxOCAxLjE5OTk1IDgwLjg0MDkgMC41MjIzNjRDNzMuMjU1NyAtMS4yODQ1MyA2NC44NDIzIDEuNzA4MTQgNjAuNTEzMyA3Ljc2ODc4QzU1Ljg0NTUgMTQuMjgxMSA1NS4wMTczIDIxLjMyMDUgNTguNTE4MiAyOC41MTA1QzYyLjE4ODUgMzYuMDc2OCA2OC43MTk2IDM5LjU5NjUgNzYuOTQ0OCAzOS45MTY1Qzg2LjM5MzQgNDAuMjc0MSA5NC41NjIgNDMuNDkyNyAxMDEuNDcgNDkuOTg2MkMxMTcuMjQyIDY0LjgxNzggMTE2LjA5NCA5MS4xNDk2IDk5LjE3MzQgMTA0LjUxM0M5Mi4wMjExIDExMC4xNiA4My45MDg5IDExMi4zODEgNzQuOTY4NSAxMTIuODMyQzY0LjMxNTMgMTEzLjM3OCA1Ni41MjMxIDEyMS44MjkgNTYuNTIzMSAxMzIuNDI2QzU2LjUyMzEgMTQyLjg5MSA2NC4xNDU5IDE1MS4yNjcgNzQuNjEwOSAxNTIuMzIxQzg0LjM5ODIgMTUzLjI5OSA5My43MTUxIDE0Ni4zNTQgOTUuNjcyNSAxMzYuMzk3Qzk2LjI3NDggMTMzLjM2NyA5Ni4xNDMxIDEzMC4xODYgOTYuNjMyNCAxMjcuMTE4Qzk5LjU2ODcgMTA4LjU3OSAxMTUuNDE3IDk2LjMwNjggMTMxLjczNSA5Ni4xNTYyQzEzNy40MzggOTYuMDk5NyAxNDIuNTk1IDk0LjQ5OTkgMTQ2LjY2MSA5MC4yMjczQzE1Mi4yMTMgODQuMzkyNSAxNTMuOTI2IDc3LjUwMzcgMTUxLjM4NSA2OS45NTYyQzE0OC45NzYgNjIuNzg1MSAxNDMuODc1IDU4LjE3MzcgMTM2LjI3MSA1Ni43ODA5TDEzNi4yMzQgNTYuNzYyMVoiIGZpbGw9IiMyMTc2RkYiLz48L3N2Zz4=";
+
+  var TYPES={
+    cred:{label:'КРАЖА УЧЁТКИ',name:'Кража учётных данных',r:18,hp:1,speed:1,dmg:6,pts:10,col:'#6EE7B7',
+      icon:'M15.5 7.5a3.5 3.5 0 1 1-7 0a3.5 3.5 0 1 1 7 0M12 11v10M12 15.5h3.5M12 18.5h2.5',
+      desc:'Злоумышленник получает логин и пароль сотрудника и использует их для доступа к корпоративным системам.',
+      need:'улучшить управление учётными записями и правами доступа',help:'в этом поможет IDM'},
+    leak:{label:'УТЕЧКА ДАННЫХ',name:'Утечка данных',r:20,hp:1,speed:0.8,dmg:5,pts:10,col:'#FFD43B',incident:true,
+      desc:'Конфиденциальная информация передаётся посторонним лицам или на внешние ресурсы без разрешения.',
+      need:'улучшить контроль передачи конфиденциальной информации',help:'в этом поможет DLP'},
+    virus:{label:'BRUTE FORCE',name:'Brute Force (перебор паролей)',r:20,hp:1,speed:1.25,dmg:7,pts:15,col:'#FF4D5E',
+      desc:'Злоумышленник многократно пытается подобрать пароль для получения доступа к системе.',
+      need:'улучшить мониторинг событий информационной безопасности и выявление подозрительной активности',help:'в этом поможет SIEM'},
+    web:{label:'SQL-ИНЪЕКЦИЯ',name:'SQL-инъекция',r:16,hp:1,speed:1.45,dmg:4,pts:8,col:'#FF8F0C',
+      icon:'M4 6c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3zM4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3',
+      desc:'Злоумышленник внедряет вредоносный SQL-код в запрос к веб-приложению, чтобы получить доступ к данным или изменить их.',
+      need:'улучшить защиту веб-приложений от вредоносных запросов',help:'в этом поможет WAF'},
+    ransom:{label:'RANSOMWARE',name:'Ransomware (атака с использованием шифровальщика)',r:34,hp:3,speed:0.55,dmg:18,pts:60,col:'#D6A36A',
+      desc:'Вредоносная программа шифрует файлы и требует выкуп за их восстановление.',
+      need:'улучшить защиту рабочих станций и серверов от вредоносного ПО',help:'в этом поможет EDR'},
+    scan:{label:'СКАН ПОРТОВ',name:'Сканирование портов',r:16,hp:1,speed:.9,dmg:5,pts:14,col:'#93C5FD',
+      icon:'M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18M12 7a5 5 0 1 0 0 10a5 5 0 1 0 0-10M12 12l6-6',
+      desc:'Злоумышленник проверяет сетевые устройства на наличие открытых портов и уязвимых сервисов для поиска точек проникновения.',
+      need:'улучшить контроль сетевого трафика и ограничение несанкционированных соединений',help:'в этом поможет NGFW'},
+    ddos:{label:'DDoS',name:'DDoS-атака',r:14,hp:1,speed:1.5,dmg:3,pts:5,col:'#22D3EE',
+      desc:'Злоумышленник направляет на веб-ресурс большое количество запросов, перегружая сервер и делая сайт недоступным для пользователей.',
+      need:'улучшить защиту веб-ресурсов от перегрузки вредоносным трафиком',help:'в этом помогут решения для защиты веб-ресурсов и Anti-DDoS'},
+    acct:{label:'ПРИВИЛЕГИИ',name:'Злоупотребление привилегиями',r:18,hp:1,speed:.85,dmg:9,pts:20,col:'#A78BFA',
+      icon:'M4 17l2-9 4 4 2-6 2 6 4-4 2 9zM4 20h16',
+      desc:'Злоумышленник использует скомпрометированную учётную запись администратора для изменения настроек или получения доступа к конфиденциальным данным.',
+      need:'улучшить контроль привилегированного доступа и действий администраторов',help:'в этом поможет PAM'},
+    lateral:{label:'LATERAL MOVEMENT',name:'Боковое перемещение (Lateral Movement)',r:17,hp:1,speed:.85,dmg:8,pts:18,col:'#F0ABFC',
+      icon:'M3 12h18M15 6l6 6-6 6M9 6l-6 6 6 6',
+      desc:'Получив доступ к одному устройству, злоумышленник пытается проникнуть в другие системы корпоративной сети.',
+      need:'улучшить мониторинг внутреннего сетевого трафика и выявление аномальной активности',help:'в этом поможет NAD'},
+    supply:{label:'КОНТЕЙНЕР',name:'Эксплуатация уязвимостей контейнера',r:18,hp:1,speed:.9,dmg:8,pts:18,col:'#F8FAFC',
+      icon:'M3 8l9-5 9 5v8l-9 5-9-5zM3 8l9 5 9-5M12 13v8',
+      desc:'Злоумышленник использует уязвимость программного компонента контейнера для выполнения вредоносного кода или получения доступа к инфраструктуре.',
+      need:'улучшить контроль безопасности контейнерной инфраструктуры и проверку образов на уязвимости',help:'в этом поможет Container Security'},
+    vuln:{label:'УЯЗВИМОСТЬ',name:'Эксплуатация неисправленных уязвимостей',r:19,hp:2,speed:.7,dmg:10,pts:25,col:'#FCA5A5',
+      icon:'M12 2l9 5v10l-9 5-9-5V7zM12 8v5M12 16.5v.5',
+      desc:'Злоумышленник использует известную, но не закрытую уязвимость в системе, чтобы проникнуть в инфраструктуру.',
+      need:'улучшить процессы выявления уязвимостей и проверки соответствия требованиям информационной безопасности',help:'в этом поможет аудит информационной безопасности'},
+    minion:{label:'',name:'Целевая атака',r:13,hp:1,speed:1.35,dmg:4,pts:8,col:'#F472D0'}
+  };
+  var ORDER=['cred','leak','virus','web','ransom','scan','ddos','acct','lateral','supply','vuln'];
+  var FROM={cred:1,leak:1,virus:2,web:3,ransom:4,scan:5,ddos:6,acct:7,lateral:8,supply:9,vuln:10};
+  var WEIGHT={cred:3,leak:2,virus:2.5,web:2.5,ransom:.7,scan:1.4,ddos:1.4,acct:1.2,lateral:1.2,supply:1.1,vuln:1};
+  var TRAIT={virus:'виляет из стороны в сторону',web:'самая быстрая',ransom:'выдерживает 3 попадания',scan:'прочёсывает поле из стороны в сторону',ddos:'летит стаей',acct:'видна не всегда',lateral:'перепрыгивает в сторону',supply:'возникает посреди поля',vuln:'2 попадания и разгоняется'};
+  var NEWAT={};ORDER.forEach(function(k){if(FROM[k]>1)NEWAT[FROM[k]]=k;});
+  var BONUS={
+    IDM:{name:'IDM (Identity Management)',w:1.6,kills:['cred'],
+      desc:'Решение для централизованного управления учётными записями сотрудников и правами доступа к корпоративным системам.',
+      game:'Отзывает украденные учётки: снимает все «Кражи учётных данных» и восстанавливает 10% целостности'},
+    PAM:{name:'PAM (Privileged Access Management)',w:1.3,kills:['acct'],
+      desc:'Решение для защиты привилегированных учётных записей, контроля действий администраторов и управления административным доступом.',
+      game:'Снимает «Злоупотребления привилегиями»; 8 секунд все угрозы видны, очки удваиваются'},
+    SIEM:{name:'SIEM (Security Information and Event Management)',w:2,kills:['virus'],
+      desc:'Решение для централизованного сбора и анализа событий информационной безопасности, выявления подозрительной активности и обнаружения инцидентов.',
+      game:'Снимает Brute Force; 6 секунд все угрозы замедлены и видны'},
+    EDR:{name:'EDR (Endpoint Detection and Response)',w:1.4,kills:['ransom'],
+      desc:'Решение для мониторинга и защиты рабочих станций и серверов от вредоносной активности с возможностью реагирования на инциденты.',
+      game:'Снимает Ransomware; 8 секунд ядро само сбивает угрозы'},
+    DLP:{name:'DLP (Data Loss Prevention)',w:2,kills:['leak'],
+      desc:'Решение для предотвращения утечек конфиденциальной информации и контроля передачи данных за пределы организации.',
+      game:'Перехватывает все утечки данных и восстанавливает 20% целостности'},
+    WAF:{name:'WAF (Web Application Firewall)',w:1.4,kills:['web'],
+      desc:'Решение для защиты веб-приложений от вредоносных запросов и попыток эксплуатации уязвимостей.',
+      game:'Блокирует все SQL-инъекции и бьёт по трём ближайшим к периметру угрозам'},
+    NGFW:{name:'NGFW (Next-Generation Firewall)',w:1.4,kills:['scan'],
+      desc:'Межсетевой экран нового поколения для контроля сетевого трафика, фильтрации соединений и блокировки сетевых угроз.',
+      game:'Снимает сканирование портов; 8 секунд угрозы сгорают о щит на периметре'},
+    NAD:{name:'NAD (Network Anomaly Detection)',w:1.2,kills:['lateral'],
+      desc:'Решение для анализа сетевого трафика, выявления аномалий и обнаружения подозрительной активности в инфраструктуре.',
+      game:'Снимает боковое перемещение; 8 секунд угрозы идут прямо и медленнее'},
+    CS:{name:'Container Security',w:1.1,kills:['supply'],
+      desc:'Решение для защиты контейнерной инфраструктуры, проверки образов на уязвимости и контроля безопасности контейнеров.',
+      game:'Снимает атаки на контейнеры; следующие 3 прорыва без урона'},
+    WEB:{name:'Защита веб-ресурсов',w:.6,kills:['ddos','web'],
+      desc:'Комплекс технологий для защиты сайтов и веб-сервисов от вредоносного трафика, эксплуатации уязвимостей и атак на доступность.',
+      game:'Отражает DDoS и веб-атаки, а затем очищает всё поле'}
+  };
+  var BORDER=['IDM','PAM','SIEM','EDR','DLP','WAF','NGFW','NAD','CS','WEB'];
+  var PICKS=BORDER.map(function(k){return[k,BONUS[k].w];});
+  var ICONS={};
+  ['cred','web','scan','acct','lateral','supply','vuln'].forEach(function(k){try{ICONS[k]=new Path2D(TYPES[k].icon);}catch(e){ICONS[k]=null;}});
+  function esc(x){return String(x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');}
+  (function(){
+    var tl=document.getElementById('threatlist'),h='';
+    ORDER.forEach(function(k){var t=TYPES[k];h+='<li><i class="dot" style="background:'+t.col+'"></i><span><b>'+esc(t.name)+'</b><small>'+esc(t.desc)+'</small><span class="tag">'+(FROM[k]>1?'С '+FROM[k]+'-Й ВОЛНЫ':'С 1-Й ВОЛНЫ')+(TRAIT[k]?' · '+esc(TRAIT[k].toUpperCase()):'')+'</span></span></li>';});
+    h+='<li><i class="dot" style="background:#F472D0"></i><span><b>Целевая атака (APT)</b><small>Финальный босс 12-й волны: выдерживает 30 попаданий и выпускает свои угрозы.</small></span></li>';
+    tl.innerHTML=h;
+    var bl=document.getElementById('bonuslist'),b='';
+    BORDER.forEach(function(k){var x=BONUS[k];b+='<li><span class="chip">'+k+'</span><span><b>'+esc(x.name)+'</b><small>'+esc(x.desc)+'</small><em>В игре: '+esc(x.game)+'</em></span></li>';});
+    bl.innerHTML=b;
+  })();
+
+  var state='idle',score=0,integrity=100,wave=1,elapsed=0,combo=0,bestCombo=0,best=0,endless=false;
+  var eff={ngfw:0,edr:0,pam:0,nad:0},edrT=0,bck=0,tels=[],beams=[];
+  var spawnT=0,pickT=0,slowT=0,breachFlash=0,shake=0,banner=0,bannerSub='',clock=0,pamFlash=0,healFlash=0,comboPop=0;
+  var threats=[],picks=[],parts=[],floats=[],rings=[],waves=[],rain=[];
+  var boss=null,stats=null;
+  try{best=+localStorage.getItem('pd-best')||0;}catch(e){}
+  if(tgv('6.9')&&tg.CloudStorage){
+    try{tg.CloudStorage.getItem('pd_best',function(err,v){if(!err&&+v>best){best=+v;try{localStorage.setItem('pd-best',String(best));}catch(e){}}});}catch(e){}
+  }
+  function saveBest(){
+    try{localStorage.setItem('pd-best',String(best));}catch(e){}
+    if(tgv('6.9')&&tg.CloudStorage){try{tg.CloudStorage.setItem('pd_best',String(best),function(){});}catch(e){}}
+  }
+
+  for(var ri=0;ri<26;ri++)rain.push({x:Math.random()*W,y:Math.random()*H,s:20+Math.random()*50,ch:Math.random()<.5?'0':'1',a:.04+Math.random()*.08});
+
+  function rr(x,y,w,h,r){
+    ctx.beginPath();ctx.moveTo(x+r,y);
+    ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);
+    ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();
+  }
+  function rand(a,b){return a+Math.random()*(b-a);}
+  function mult(){return 1+Math.floor(combo/5);}
+
+  function reset(){
+    score=0;integrity=100;wave=1;elapsed=0;combo=0;bestCombo=0;endless=false;
+    eff={ngfw:0,edr:0,pam:0,nad:0};edrT=0;bck=0;tels=[];beams=[];
+    spawnT=0.6;pickT=8;slowT=0;breachFlash=0;shake=0;banner=1.8;bannerSub='Скорость будет расти с каждой волной';pamFlash=0;healFlash=0;comboPop=0;
+    threats=[];picks=[];parts=[];floats=[];rings=[];waves=[];boss=null;
+    stats={clicks:0,hits:0,stopped:0,breaches:0,picks:0,miss:{},bossMiss:false};
+    state='play';
+    $('overlay').hidden=true;$('pausebtn').disabled=false;$('pausebtn').setAttribute('aria-pressed','false');
+  }
+
+  function weighted(list){
+    var sum=0,i;for(i=0;i<list.length;i++)sum+=list[i][1];
+    var r=Math.random()*sum;for(i=0;i<list.length;i++){r-=list[i][1];if(r<=0)return list[i][0];}
+    return list[0][0];
+  }
+  function pickType(){
+    var l=[];
+    ORDER.forEach(function(k){if(FROM[k]<=wave)l.push([k,WEIGHT[k]]);});
+    var nk=NEWAT[wave];
+    if(nk&&!endless&&elapsed-(wave-1)*WAVE_LEN<6&&Math.random()<.4)return nk;
+    return weighted(l);
+  }
+  function addThreat(kind,x,y){
+    var d=TYPES[kind];
+    var t={kind:kind,def:d,x:x,x0:x,y:y,hp:d.hp,age:0,ph:rand(0,6.28),flash:0,trail:[],hopT:rand(.6,1.2)};
+    threats.push(t);return t;
+  }
+  function spawn(){
+    var kind=pickType(),d=TYPES[kind];
+    var x=rand(d.r+24,W-d.r-24);
+    if(kind==='ddos'){
+      for(var i=0;i<3;i++)addThreat('ddos',Math.min(W-30,Math.max(30,x+(i-1)*44)),-d.r-i*34);
+    }else if(kind==='supply'){
+      tels.push({x:x,y:rand(170,360),t:.9});
+    }else{
+      addThreat(kind,x,-d.r-4);
+    }
+  }
+  function spawnPick(){
+    picks.push({kind:weighted(PICKS),x:rand(50,W-50),y:-30,r:26,age:0});
+  }
+  function spawnBoss(){
+    boss={x:W/2,y:-60,hp:30,max:30,age:0,flash:0,shootT:2.5,r:42};
+    banner=2.4;bannerSub='Целевая атака: 30 попаданий. Она выпускает свои угрозы';
+  }
+
+  function burst(x,y,n,col,spd){
+    if(calm)n=Math.ceil(n/3);
+    for(var i=0;i<n;i++){
+      var a=rand(0,6.28),s=rand(40,spd||170);
+      parts.push({x:x,y:y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:rand(.35,.7),max:.7,col:col,size:rand(2,4.5)});
+    }
+  }
+  function shock(x,y,col,max){waves.push({x:x,y:y,col:col,life:.4,max:max||46});}
+  function float(x,y,txt,col,big){floats.push({x:x,y:y,txt:txt,col:col,life:big?1.4:.9,big:!!big});}
+
+  function kill(t,bySweep){
+    combo++;if(combo>bestCombo)bestCombo=combo;
+    if(combo%5===0&&combo>0)comboPop=1;
+    if(!bySweep)buzz('impact','light');
+    var pts=t.def.pts*mult()*(eff.pam>0?2:1);
+    score+=pts;stats.stopped++;
+    burst(t.x,t.y,bySweep?8:16,t.def.col);
+    shock(t.x,t.y,t.def.col,t.def.r+26);
+    float(t.x,t.y-t.def.r,'+'+pts,C.lime);
+  }
+
+  function breach(dmg,x,col){
+    integrity-=dmg;stats.breaches++;buzz('n','error');
+    combo=0;
+    breachFlash=.4;
+    shake=calm?0:9;
+    float(x,LINE-10,'-'+dmg,col||C.orange);
+    shock(x,LINE,col||C.orange,60);
+    if(integrity<=0){integrity=0;finish(false);}
+  }
+
+  function clearKinds(kinds){
+    var n=0;
+    for(var w=threats.length-1;w>=0;w--){var tw=threats[w];if(kinds.indexOf(tw.kind)>=0){threats.splice(w,1);kill(tw,true);n++;}}
+    return n;
+  }
+  function edrShot(){
+    var tg=null,ly=-1e9,i;
+    for(i=0;i<threats.length;i++){var th=threats[i];if(th.y>0&&acctVis(th)&&th.y>ly){ly=th.y;tg=th;}}
+    if(tg){beams.push({x:tg.x,y:tg.y,life:.15});tg.hp--;tg.flash=.08;if(tg.hp<=0){threats.splice(threats.indexOf(tg),1);kill(tg,true);}return true;}
+    if(boss){beams.push({x:boss.x,y:boss.y,life:.15});hitBoss(1);return true;}
+    return false;
+  }
+  function collect(p){
+    stats.picks++;buzz('n','success');
+    burst(p.x,p.y,18,C.lime);shock(p.x,p.y,C.lime,70);
+    var k=p.kind,n=clearKinds(BONUS[k].kills),msg=k;
+    if(k==='IDM'){integrity=Math.min(100,integrity+10);healFlash=.6;msg='IDM: учётки отозваны, +10%';}
+    else if(k==='PAM'){eff.pam=8;msg='PAM: всё видно, очки ×2';}
+    else if(k==='SIEM'){slowT=6;msg='SIEM: замедление и видимость';}
+    else if(k==='EDR'){eff.edr=8;edrT=0;msg='EDR: автозачистка';}
+    else if(k==='DLP'){integrity=Math.min(100,integrity+20);healFlash=.8;msg='DLP: утечки перехвачены, +20%';}
+    else if(k==='WAF'){for(var j=0;j<3;j++)edrShot();shock(W/2,H/2,'#FF8F0C',300);msg='WAF: запросы отфильтрованы';}
+    else if(k==='NGFW'){eff.ngfw=8;msg='NGFW: щит на периметре';}
+    else if(k==='NAD'){eff.nad=8;msg='NAD: аномалии под контролем';}
+    else if(k==='CS'){bck=3;msg='Container Security: 3 прорыва без урона';}
+    else if(k==='WEB'){
+      pamFlash=.6;msg='Защита веб-ресурсов: поле очищено';
+      for(var i=0;i<threats.length;i++)kill(threats[i],true);
+      threats=[];
+      if(boss)hitBoss(5);
+    }
+    float(p.x,p.y-30,msg+(n&&k!=='WEB'?' · −'+n:''),C.lime,true);
+  }
+  function hitBoss(n){
+    if(!boss)return;
+    boss.hp-=n;boss.flash=.1;
+    burst(boss.x,boss.y,6*n,C.boss);
+    if(boss.hp<=0){
+      var b=boss;boss=null;
+      score+=500*mult();stats.stopped++;
+      burst(b.x,b.y,60,C.boss,260);shock(b.x,b.y,C.boss,180);shock(b.x,b.y,C.lime,240);
+      float(b.x,b.y,'+'+(500*mult())+' · целевая атака отражена',C.lime,true);
+      for(var i=0;i<threats.length;i++)kill(threats[i],true);
+      threats=[];
+      if(!endless)setTimeout(function(){if(state==='play')finish(true);},1200);
+    }
+  }
+
+  function acctVis(t){return t.kind!=='acct'||slowT>0||eff.pam>0||Math.sin(t.age*2.6+t.ph)>-.15;}
+  function hit(x,y){
+    if(state!=='play')return;
+    stats.clicks++;
+    var i;
+    for(i=picks.length-1;i>=0;i--){
+      var p=picks[i];
+      if(Math.hypot(p.x-x,p.y-y)<p.r+22){picks.splice(i,1);stats.hits++;collect(p);return;}
+    }
+    var bi=-1,bd=1e9;
+    for(i=threats.length-1;i>=0;i--){
+      var tt=threats[i];
+      if(!acctVis(tt))continue;
+      var dd=Math.hypot(tt.x-x,tt.y-y);
+      if(dd<tt.def.r+20&&dd-tt.def.r<bd){bd=dd-tt.def.r;bi=i;}
+    }
+    if(bi>=0){
+      i=bi;var t=threats[i];
+      {
+        stats.hits++;
+        t.hp--;t.flash=.08;
+        if(t.hp<=0){threats.splice(i,1);kill(t);}
+        else{burst(t.x,t.y,6,t.def.col);shock(t.x,t.y,t.def.col,t.def.r+12);}
+        return;
+      }
+    }
+    if(boss&&Math.hypot(boss.x-x,boss.y-y)<boss.r+18){buzz('impact','medium');stats.hits++;combo++;if(combo>bestCombo)bestCombo=combo;hitBoss(1);return;}
+    rings.push({x:x,y:y,life:.3});
+  }
+
+  function finish(win){
+    state='over';$('pausebtn').disabled=true;
+    var fresh=score>best;
+    if(fresh){best=score;saveBest();}
+    var acc=stats.clicks?stats.hits/stats.clicks:1;
+    var stars=0;if(win){stars=1;if(integrity>=50)stars++;if(acc>=.8)stars++;}
+    var h='<span class="lbl">'+(win?'Смена отработана':'Отчёт смены')+'</span>';
+    h+='<h2>'+(win?'Периметр удержан':(endless?'Бесконечный режим окончен':'Периметр прорван'))+'</h2>';
+    if(win){h+='<div class="stars" aria-label="'+stars+' из 3 звёзд">';for(var i=0;i<3;i++)h+=i<stars?'★':'<i>★</i>';h+='</div>';}
+    h+='<dl class="rep">'+
+      '<dt>Счёт</dt><dd>'+score+(fresh?' · рекорд!':'')+'</dd>'+
+      '<dt>Волна</dt><dd>'+wave+(endless?'':' из '+WAVES)+'</dd>'+
+      '<dt>Целостность периметра</dt><dd>'+Math.max(0,Math.round(integrity))+'%</dd>'+
+      '<dt>Угроз нейтрализовано</dt><dd>'+stats.stopped+'</dd>'+
+      '<dt>Прорвалось к периметру</dt><dd>'+stats.breaches+'</dd>'+
+      '<dt>Точность нажатий</dt><dd>'+Math.round(acc*100)+'%</dd>'+
+      '<dt>Лучшая серия</dt><dd>'+bestCombo+'</dd></dl>';
+    if(win)h+='<p style="font-size:12px">Звёзды: победа, целостность от 50%, точность от 80%.</p>';
+    h+=recsHTML();
+    h+='<div class="acts">';
+    if(win)h+='<button class="btn" id="endless" type="button">Играть дальше без конца</button><button class="btn ghost" id="again" type="button">Сыграть сначала</button>';
+    else h+='<button class="btn" id="again" type="button">Играть снова</button>';
+    h+='</div>';
+    $('ov').innerHTML=h;
+    $('again').addEventListener('click',reset);
+    if(win)$('endless').addEventListener('click',function(){endless=true;state='play';$('overlay').hidden=true;$('pausebtn').disabled=false;wave=WAVES+1;elapsed=WAVES*WAVE_LEN;banner=1.8;bannerSub='Бесконечный режим: скорость растёт дальше';last=performance.now();});
+    $('overlay').hidden=false;$('overlay').scrollTop=0;
+    setTimeout(function(){try{$(win?'endless':'again').focus({preventScroll:true});}catch(e){}},350);
+  }
+
+  function plural(n,f1,f2,f5){var m=n%100,d=n%10;if(m>10&&m<20)return f5;if(d===1)return f1;if(d>=2&&d<=4)return f2;return f5;}
+  function recsHTML(){
+    var tail='<span class="pz">Компания Puzzle Systems подберёт нужный Вам продукт в соответствии с рекомендацией. Напишите нам: <a href="'+SITE+'" target="_blank" rel="noopener">puzzle.systems</a></span>';
+    var ks=Object.keys(stats.miss).sort(function(a,b){return stats.miss[b]-stats.miss[a];});
+    var h='<span class="lbl">'+(ks.length||stats.bossMiss?'Рекомендации по пропущенным атакам':'Рекомендации')+'</span><div class="recs">';
+    ks.forEach(function(k){
+      var t=TYPES[k],n=stats.miss[k],many=n>=3,txt;
+      if(t.incident)txt=many?'Вы допустили большое количество инцидентов «'+t.name+'»':'Вы допустили '+n+' '+plural(n,'инцидент','инцидента','инцидентов')+' «'+t.name+'»';
+      else txt=many?'Вы пропустили большое количество атак «'+t.name+'»':'Вы пропустили '+n+' '+plural(n,'атаку','атаки','атак')+' «'+t.name+'»';
+      h+='<div class="rec" style="--pc:'+t.col+'"><b>'+esc(txt)+'</b>'+', вам необходимо '+esc(t.need)+', '+esc(t.help)+'.'+tail+'</div>';
+    });
+    if(stats.bossMiss)h+='<div class="rec" style="--pc:#F472D0"><b>Целевая атака прорвалась к периметру.</b> Против целевых атак нужна комплексная защита: обратитесь в Puzzle Systems, специалисты оценят вашу инфраструктуру и подберут решения.'+tail+'</div>';
+    if(!ks.length&&!stats.bossMiss)h+='<div class="rec" style="--pc:#AFFB33"><b>Ни одна атака не прорвалась к периметру.</b> Отличная смена! Чтобы так же надёжно была защищена реальная инфраструктура, нужен комплекс решений.'+tail+'</div>';
+    return h+'</div>';
+  }
+  function pauseGame(){
+    if(state!=='play')return;
+    state='pause';$('pausebtn').setAttribute('aria-pressed','true');
+    $('ov').innerHTML='<span class="lbl">Пауза</span><h2>Игра на паузе</h2><p>Волна '+wave+(endless?'':' из '+WAVES)+'. Счёт '+score+', целостность '+Math.round(integrity)+'%.</p>'+
+      '<div class="acts"><button class="btn" id="resume" type="button">Продолжить</button><button class="btn ghost" id="infoP" type="button">Угрозы и бонусы</button><button class="btn ghost" id="restart" type="button">Начать заново</button></div>';
+    $('infoP').addEventListener('click',openSheet);
+    $('resume').addEventListener('click',resumeGame);
+    $('restart').addEventListener('click',reset);
+    $('overlay').hidden=false;
+    setTimeout(function(){try{$('resume').focus({preventScroll:true});}catch(e){}},50);
+  }
+  function resumeGame(){
+    if(state!=='pause')return;
+    state='play';$('overlay').hidden=true;$('pausebtn').setAttribute('aria-pressed','false');last=performance.now();
+  }
+
+  function update(dt){
+    clock+=dt;
+    breachFlash=Math.max(0,breachFlash-dt);
+    shake=Math.max(0,shake-30*dt);
+    banner=Math.max(0,banner-dt);
+    pamFlash=Math.max(0,pamFlash-dt);healFlash=Math.max(0,healFlash-dt);comboPop=Math.max(0,comboPop-dt*1.5);
+    var i;
+    for(i=0;i<rain.length;i++){var rd=rain[i];rd.y+=rd.s*dt*(slowT>0&&state==='play'?.4:1);if(rd.y>H+10){rd.y=-10;rd.x=Math.random()*W;rd.ch=Math.random()<.5?'0':'1';}}
+    for(i=parts.length-1;i>=0;i--){
+      var q=parts[i];q.life-=dt;q.x+=q.vx*dt;q.y+=q.vy*dt;q.vx*=.94;q.vy*=.94;
+      if(q.life<=0)parts.splice(i,1);
+    }
+    for(i=floats.length-1;i>=0;i--){var f=floats[i];f.life-=dt;f.y-=30*dt;if(f.life<=0)floats.splice(i,1);}
+    for(i=rings.length-1;i>=0;i--){rings[i].life-=dt;if(rings[i].life<=0)rings.splice(i,1);}
+    for(i=waves.length-1;i>=0;i--){waves[i].life-=dt;if(waves[i].life<=0)waves.splice(i,1);}
+    if(state!=='play')return;
+
+    elapsed+=dt;
+    var nw=1+Math.floor(elapsed/WAVE_LEN);
+    if(!endless)nw=Math.min(WAVES,nw);
+    if(nw!==wave){
+      wave=nw;banner=1.8;
+      var spd=Math.round(((72+(wave-1)*7)/72-1)*100);
+      bannerSub=NEWAT[wave]&&!endless?'Новая угроза: '+TYPES[NEWAT[wave]].name.replace(/ \(.*\)/,'')+' — '+TRAIT[NEWAT[wave]]:'Скорость угроз +'+spd+'%';
+      if(wave===WAVES&&!endless)spawnBoss();
+    }
+    if(slowT>0)slowT-=dt;
+    for(var ek in eff)if(eff[ek]>0)eff[ek]=Math.max(0,eff[ek]-dt);
+    for(i=beams.length-1;i>=0;i--){beams[i].life-=dt;if(beams[i].life<=0)beams.splice(i,1);}
+    for(i=tels.length-1;i>=0;i--){tels[i].t-=dt;if(tels[i].t<=0){addThreat('supply',tels[i].x,tels[i].y);tels.splice(i,1);}}
+    if(eff.edr>0){
+      edrT-=dt;
+      if(edrT<=0){edrT=.45;edrShot();}
+    }
+    var slow=(slowT>0?0.4:1)*(eff.nad>0?.75:1);
+    var base=(72+(wave-1)*7)*(LINE/548);
+
+    var bossWave=boss&&!endless;
+    spawnT-=dt;
+    if(spawnT<=0){spawn();spawnT=Math.max(0.4,1.2-(wave-1)*0.06)*rand(.7,1.3)*(bossWave?1.8:1);}
+    pickT-=dt;
+    if(pickT<=0){spawnPick();pickT=rand(12,20);}
+
+    if(boss){
+      boss.age+=dt;boss.flash-=dt;
+      if(boss.y<150)boss.y+=40*slow*dt;
+      boss.x=W/2+Math.sin(boss.age*.8)*150;
+      boss.shootT-=dt*slow;
+      if(boss.shootT<=0){
+        boss.shootT=Math.max(.9,2.2-(1-boss.hp/boss.max)*1.2);
+        var m=addThreat('minion',boss.x+rand(-20,20),boss.y+boss.r);
+      }
+    }
+
+    for(i=threats.length-1;i>=0;i--){
+      var t=threats[i];
+      t.age+=dt;t.flash-=dt;
+      t.y+=base*t.def.speed*slow*dt*(t.kind==='vuln'?1+t.age*.12:1);
+      if(eff.nad<=0){
+        if(t.kind==='virus')t.x=Math.min(W-24,Math.max(24,t.x0+Math.sin(t.age*3+t.ph)*22));
+        else if(t.kind==='scan')t.x=Math.min(W-24,Math.max(24,t.x0+Math.sin(t.age*1.1+t.ph)*110));
+        else if(t.kind==='lateral'){
+          t.hopT-=dt;
+          if(t.hopT<=0){t.hopT=rand(.9,1.4);var nx=t.x0+(Math.random()<.5?-1:1)*rand(70,120);if(nx<40||nx>W-40)nx=t.x0-(nx-t.x0);t.x0=Math.min(W-30,Math.max(30,nx));}
+          t.x+=(t.x0-t.x)*Math.min(1,dt*10);
+        }
+      }
+      if(!calm){t.trail.push(t.x,t.y);if(t.trail.length>12)t.trail.splice(0,2);}
+      if(t.y>=LINE){
+        threats.splice(i,1);
+        if(eff.ngfw>0){kill(t,true);shock(t.x,LINE,C.lime,40);continue;}
+        if(bck>0){bck--;combo=0;float(t.x,LINE-10,'Container Security: прорыв отражён',C.lime);shock(t.x,LINE,C.lime,50);continue;}
+        if(t.kind==='minion')stats.bossMiss=true;else stats.miss[t.kind]=(stats.miss[t.kind]||0)+1;
+        breach(t.def.dmg,t.x,t.def.col);if(state!=='play')return;
+      }
+    }
+    for(i=picks.length-1;i>=0;i--){
+      var p=picks[i];p.age+=dt;p.y+=55*(LINE/548)*dt;
+      if(p.y>H+40)picks.splice(i,1);
+    }
+  }
+
+  function wrapText(txt,x,y,maxW,lh){
+    if(ctx.measureText(txt).width<=maxW){ctx.fillText(txt,x,y);return;}
+    var words=txt.split(' '),line='',out=[];
+    for(var i=0;i<words.length;i++){var test=line?line+' '+words[i]:words[i];if(ctx.measureText(test).width>maxW&&line){out.push(line);line=words[i];}else line=test;}
+    out.push(line);
+    for(var j=0;j<out.length;j++)ctx.fillText(out[j],x,y+j*lh);
+  }
+  function glow(col,blur){if(!calm){ctx.shadowColor=col;ctx.shadowBlur=blur;}}
+  function noGlow(){ctx.shadowBlur=0;}
+
+  function drawThreat(t){
+    var d=t.def,col=t.flash>0?'#ffffff':d.col;
+    if(!acctVis(t)){
+      ctx.save();ctx.globalAlpha=.16;ctx.strokeStyle=d.col;ctx.setLineDash([3,4]);ctx.lineWidth=1.5;
+      ctx.beginPath();ctx.arc(t.x,t.y,d.r+2,0,6.2832);ctx.stroke();ctx.restore();return;
+    }
+    if(t.trail.length>2){
+      ctx.strokeStyle=d.col;ctx.lineCap='round';
+      for(var j=2;j<t.trail.length;j+=2){
+        ctx.globalAlpha=j/t.trail.length*.25;ctx.lineWidth=d.r*.6*j/t.trail.length;
+        ctx.beginPath();ctx.moveTo(t.trail[j-2],t.trail[j-1]);ctx.lineTo(t.trail[j],t.trail[j+1]);ctx.stroke();
+      }
+      ctx.globalAlpha=1;
+    }
+    ctx.save();
+    ctx.translate(t.x,t.y);
+    glow(d.col,16);
+    ctx.fillStyle=col;ctx.strokeStyle=col;
+    if(t.kind==='phish'){
+      rr(-22,-15,44,30,5);ctx.fill();noGlow();
+      ctx.strokeStyle=C.navy;ctx.lineWidth=2.5;ctx.lineJoin='round';
+      ctx.beginPath();ctx.moveTo(-19,-11);ctx.lineTo(0,4);ctx.lineTo(19,-11);ctx.stroke();
+    }else if(t.kind==='virus'){
+      ctx.beginPath();ctx.arc(0,0,13,0,6.2832);ctx.fill();
+      ctx.lineWidth=4;ctx.lineCap='round';
+      var rot=calm?0:t.age*1.5;
+      for(var i=0;i<8;i++){
+        var a=rot+i*Math.PI/4;
+        ctx.beginPath();ctx.moveTo(Math.cos(a)*14,Math.sin(a)*14);ctx.lineTo(Math.cos(a)*21,Math.sin(a)*21);ctx.stroke();
+      }
+      noGlow();ctx.fillStyle=C.navy;
+      [[-4,-3],[4,-3],[0,4]].forEach(function(c){ctx.beginPath();ctx.arc(c[0],c[1],2.2,0,6.2832);ctx.fill();});
+    }else if(t.kind==='leak'){
+      ctx.beginPath();ctx.moveTo(0,-22);
+      ctx.bezierCurveTo(8,-10,16,-2,16,7);
+      ctx.arc(0,7,16,0,Math.PI,false);
+      ctx.bezierCurveTo(-16,-2,-8,-10,0,-22);
+      ctx.closePath();ctx.fill();noGlow();
+      ctx.strokeStyle=C.navy;ctx.lineWidth=2.5;ctx.lineCap='round';
+      ctx.beginPath();ctx.arc(0,7,8,Math.PI*.15,Math.PI*.7,false);ctx.stroke();
+    }else if(ICONS[t.kind]!==undefined){
+      ctx.beginPath();ctx.arc(0,0,d.r,0,6.2832);ctx.fill();noGlow();
+      if(ICONS[t.kind]){ctx.save();var sc=d.r*1.25/24;ctx.scale(sc,sc);ctx.translate(-12,-12);ctx.strokeStyle=C.navy;ctx.lineWidth=2.6;ctx.lineCap='round';ctx.lineJoin='round';ctx.stroke(ICONS[t.kind]);ctx.restore();}
+    }else if(t.kind==='ddos'||t.kind==='minion'){
+      ctx.rotate(calm?0:t.age*2);
+      ctx.beginPath();
+      for(var k=0;k<6;k++){
+        var b=k*Math.PI/3+Math.PI/6;
+        var px=Math.cos(b)*d.r,py=Math.sin(b)*d.r;
+        if(k===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);
+      }
+      ctx.closePath();ctx.fill();noGlow();
+      ctx.fillStyle=C.navy;ctx.fillRect(-3,-3,6,6);
+    }else{
+      ctx.lineWidth=7;ctx.lineCap='butt';
+      ctx.beginPath();ctx.arc(0,-8,15,Math.PI,0,false);ctx.stroke();
+      rr(-28,-8,56,40,8);ctx.fill();noGlow();
+      ctx.fillStyle=C.navy;
+      ctx.beginPath();ctx.arc(0,10,6,0,6.2832);ctx.fill();
+      ctx.fillRect(-2.5,12,5,10);
+      for(var h=0;h<3;h++){
+        ctx.beginPath();ctx.arc((h-1)*12,-34,3.2,0,6.2832);
+        if(h<t.hp){ctx.fillStyle=d.col;ctx.fill();}
+        else{ctx.strokeStyle='rgba(214,163,106,.4)';ctx.lineWidth=1.5;ctx.stroke();}
+      }
+    }
+    noGlow();
+    ctx.restore();
+    if(d.label){
+      ctx.font='800 11px Manrope,sans-serif';
+      var tw=ctx.measureText(d.label).width+10;
+      ctx.fillStyle='rgba(10,18,48,.75)';rr(t.x-tw/2,t.y+d.r+4,tw,16,8);ctx.fill();
+      ctx.fillStyle=d.col;ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText(d.label,t.x,t.y+d.r+12.5);ctx.textBaseline='alphabetic';
+    }
+  }
+
+  function drawPick(p){
+    var pulse=calm?0:Math.sin(p.age*5)*3;
+    ctx.save();
+    ctx.translate(p.x,p.y);
+    ctx.strokeStyle=C.lime;ctx.globalAlpha=.35;ctx.lineWidth=2;
+    ctx.beginPath();ctx.arc(0,0,p.r+7+pulse,0,6.2832);ctx.stroke();
+    ctx.globalAlpha=1;
+    glow(C.lime,20);
+    ctx.fillStyle=C.lime;
+    ctx.beginPath();
+    for(var k=0;k<6;k++){var a=k*Math.PI/3+(calm?0:p.age*.8);var px=Math.cos(a)*p.r,py=Math.sin(a)*p.r;if(k===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);}
+    ctx.closePath();ctx.fill();noGlow();
+    ctx.fillStyle=C.navy;
+    ctx.font='700 '+(p.kind.length>3?9:10)+'px Unbounded,Manrope,sans-serif';
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(p.kind,0,1);
+    ctx.restore();
+  }
+
+  function drawBoss(){
+    var b=boss,col=b.flash>0?'#ffffff':C.boss;
+    ctx.save();ctx.translate(b.x,b.y);
+    var rot=calm?0:b.age*.6;
+    ctx.strokeStyle=C.boss;ctx.lineWidth=3;ctx.globalAlpha=.6;
+    for(var s=0;s<6;s++){var a0=rot+s*Math.PI/3;ctx.beginPath();ctx.arc(0,0,b.r+12,a0,a0+Math.PI/5);ctx.stroke();}
+    ctx.globalAlpha=1;
+    glow(C.boss,30);ctx.fillStyle=col;
+    ctx.beginPath();for(var k=0;k<8;k++){var a=k*Math.PI/4+Math.PI/8;var px=Math.cos(a)*b.r,py=Math.sin(a)*b.r;if(k===0)ctx.moveTo(px,py);else ctx.lineTo(px,py);}
+    ctx.closePath();ctx.fill();noGlow();
+    ctx.strokeStyle=C.navy;ctx.lineWidth=3;
+    ctx.beginPath();ctx.arc(0,0,b.r*.55,0,6.2832);ctx.stroke();
+    ctx.beginPath();ctx.arc(0,0,b.r*.22,0,6.2832);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(-b.r*.8,0);ctx.lineTo(-b.r*.35,0);ctx.moveTo(b.r*.35,0);ctx.lineTo(b.r*.8,0);ctx.moveTo(0,-b.r*.8);ctx.lineTo(0,-b.r*.35);ctx.moveTo(0,b.r*.35);ctx.lineTo(0,b.r*.8);ctx.stroke();
+    ctx.restore();
+    var bw=W-80,pct=Math.max(0,b.hp/b.max);
+    ctx.fillStyle='rgba(10,18,48,.8)';rr(40,14,bw,10,5);ctx.fill();
+    ctx.fillStyle=C.boss;rr(40,14,Math.max(10,bw*pct),10,5);ctx.fill();
+    ctx.font='700 10px "JetBrains Mono",monospace';ctx.fillStyle=C.ink;ctx.textAlign='center';
+    ctx.fillText('ЦЕЛЕВАЯ АТАКА (APT) · '+Math.ceil(b.hp)+' / '+b.max,W/2,40);
+  }
+
+  function drawCore(){
+    var cx=W/2,cy=H-42;
+    var g=ctx.createRadialGradient(cx,cy,4,cx,cy,80);
+    var hot=breachFlash>0;
+    g.addColorStop(0,hot?'rgba(255,143,12,.5)':(healFlash>0?'rgba(175,251,51,.45)':'rgba(33,118,255,.45)'));g.addColorStop(1,'rgba(33,118,255,0)');
+    ctx.fillStyle=g;ctx.fillRect(cx-90,cy-90,180,180);
+    ctx.strokeStyle=hot?C.orange:'rgba(33,118,255,.6)';ctx.lineWidth=2;
+    var rot=calm?0:clock*.9;
+    for(var s=0;s<3;s++){var a0=rot+s*Math.PI*2/3;ctx.beginPath();ctx.arc(cx,cy,36,a0,a0+Math.PI/2.4);ctx.stroke();}
+    if(iconReady){
+      var sc=calm?1:1+Math.sin(clock*2)*.03;
+      var w=50*sc;
+      ctx.drawImage(icon,cx-w/2,cy-w/2,w,w);
+    }
+  }
+
+  function draw(){
+    ctx.save();
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    ctx.fillStyle=C.navy;ctx.fillRect(0,0,W,H);
+    if(shake>0)ctx.translate(rand(-shake,shake)*.5,rand(-shake,shake)*.5);
+
+    ctx.fillStyle='rgba(147,160,207,.12)';
+    for(var gx=20;gx<W;gx+=40)for(var gy=20;gy<H;gy+=40)ctx.fillRect(gx-1,gy-1,2,2);
+    ctx.font='500 12px "JetBrains Mono",monospace';ctx.textAlign='center';
+    for(var ri=0;ri<rain.length;ri++){var rd=rain[ri];ctx.fillStyle='rgba(33,118,255,'+rd.a+')';ctx.fillText(rd.ch,rd.x,rd.y);}
+    if(slowT>0&&state!=='idle'){ctx.fillStyle='rgba(34,211,238,.05)';ctx.fillRect(0,0,W,H);}
+
+    var shieldCol=breachFlash>0?C.orange:(integrity<35?C.orange:C.blue);
+    var lg=ctx.createLinearGradient(0,LINE-30,0,LINE);
+    lg.addColorStop(0,'rgba(33,118,255,0)');lg.addColorStop(1,breachFlash>0?'rgba(255,143,12,.25)':'rgba(33,118,255,.14)');
+    ctx.fillStyle=lg;ctx.fillRect(0,LINE-30,W,30);
+    ctx.fillStyle='rgba(33,118,255,.09)';ctx.fillRect(0,LINE,W,H-LINE);
+    ctx.save();
+    ctx.setLineDash([8,6]);ctx.lineDashOffset=calm?0:-clock*30;
+    ctx.strokeStyle=shieldCol;ctx.lineWidth=breachFlash>0?3:2;
+    ctx.beginPath();ctx.moveTo(0,LINE);ctx.lineTo(W,LINE);ctx.stroke();
+    ctx.restore();
+    ctx.font='500 10px "JetBrains Mono",monospace';
+    ctx.textAlign='left';ctx.textBaseline='alphabetic';
+    ctx.fillStyle=C.muted;
+    ctx.fillText('ПЕРИМЕТР',12,LINE-8);
+
+    drawCore();
+
+    var i;
+    if(state!=='idle'){
+      var segW=(W-24-(WAVES-1)*3)/WAVES;
+      for(i=0;i<WAVES;i++){
+        var done=endless||i<wave-1,cur=!endless&&i===wave-1;
+        ctx.fillStyle=done?C.lime:(cur?'rgba(175,251,51,.35)':'rgba(34,48,106,.9)');
+        ctx.fillRect(12+i*(segW+3),H-10,segW,3);
+        if(cur){ctx.fillStyle=C.lime;ctx.fillRect(12+i*(segW+3),H-10,segW*Math.min(1,(elapsed-(wave-1)*WAVE_LEN)/WAVE_LEN),3);}
+      }
+    }
+
+    for(i=0;i<tels.length;i++){
+      var tl=tels[i];ctx.save();ctx.strokeStyle='#F8FAFC';ctx.setLineDash([4,4]);ctx.lineWidth=2;ctx.globalAlpha=.35+.4*Math.sin(clock*16);
+      ctx.beginPath();ctx.arc(tl.x,tl.y,24,0,6.2832);ctx.stroke();ctx.restore();
+      ctx.fillStyle='#F8FAFC';ctx.font='800 16px Manrope,sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('!',tl.x,tl.y);ctx.textBaseline='alphabetic';
+    }
+    if(eff.ngfw>0){
+      ctx.save();glow(C.lime,18);ctx.strokeStyle=C.lime;ctx.lineWidth=4;ctx.globalAlpha=eff.ngfw<2?(.4+.4*Math.sin(clock*20)):.9;
+      ctx.beginPath();ctx.moveTo(0,LINE-4);ctx.lineTo(W,LINE-4);ctx.stroke();noGlow();ctx.restore();
+    }
+    if(beams.length){
+      ctx.save();glow('#FF4D5E',10);ctx.strokeStyle='#FF4D5E';ctx.lineWidth=3;
+      for(i=0;i<beams.length;i++){ctx.globalAlpha=beams[i].life/.15;ctx.beginPath();ctx.moveTo(W/2,H-60);ctx.lineTo(beams[i].x,beams[i].y);ctx.stroke();}
+      noGlow();ctx.restore();ctx.globalAlpha=1;
+    }
+    if(boss)drawBoss();
+    for(i=0;i<picks.length;i++)drawPick(picks[i]);
+    for(i=0;i<threats.length;i++)drawThreat(threats[i]);
+
+    for(i=0;i<waves.length;i++){
+      var wv=waves[i],k=1-wv.life/.4;
+      ctx.globalAlpha=1-k;ctx.strokeStyle=wv.col;ctx.lineWidth=3*(1-k)+1;
+      ctx.beginPath();ctx.arc(wv.x,wv.y,wv.max*k,0,6.2832);ctx.stroke();
+    }
+    ctx.globalAlpha=1;
+    for(i=0;i<parts.length;i++){
+      var q=parts[i];
+      ctx.globalAlpha=Math.max(0,q.life/q.max);
+      ctx.fillStyle=q.col;ctx.fillRect(q.x-q.size/2,q.y-q.size/2,q.size,q.size);
+    }
+    ctx.globalAlpha=1;
+    for(i=0;i<rings.length;i++){
+      var r=rings[i];
+      ctx.globalAlpha=r.life/.3;ctx.strokeStyle=C.muted;ctx.lineWidth=1.5;
+      ctx.beginPath();ctx.arc(r.x,r.y,(1-r.life/.3)*18+4,0,6.2832);ctx.stroke();
+    }
+    ctx.globalAlpha=1;
+
+    ctx.textAlign='center';
+    for(i=0;i<floats.length;i++){
+      var f=floats[i];
+      ctx.globalAlpha=Math.min(1,f.life*2);ctx.fillStyle=f.col;
+      ctx.font=f.big?'700 16px Unbounded,Manrope,sans-serif':'800 16px Manrope,sans-serif';
+      ctx.fillText(f.txt,Math.min(W-90,Math.max(90,f.x)),f.y);
+    }
+    ctx.globalAlpha=1;
+
+    if(pamFlash>0){ctx.fillStyle='rgba(238,242,255,'+(pamFlash*.35)+')';ctx.fillRect(0,0,W,H);}
+    if(integrity<35&&state==='play'&&!calm){
+      var vg=ctx.createRadialGradient(W/2,H/2,H*.3,W/2,H/2,H*.75);
+      vg.addColorStop(0,'rgba(255,143,12,0)');vg.addColorStop(1,'rgba(255,143,12,'+(.12+.08*Math.sin(clock*5))+')');
+      ctx.fillStyle=vg;ctx.fillRect(0,0,W,H);
+    }
+
+    if(state==='play'||state==='pause'){
+      ctx.font='500 13px "JetBrains Mono",monospace';
+      var ey=boss?62:24,lines=[];
+      if(slowT>0)lines.push(['#22D3EE','SIEM · замедление '+slowT.toFixed(1)+' с']);
+      if(eff.ngfw>0)lines.push([C.lime,'NGFW · щит '+eff.ngfw.toFixed(1)+' с']);
+      if(eff.edr>0)lines.push(['#FF4D5E','EDR · зачистка '+eff.edr.toFixed(1)+' с']);
+      if(eff.pam>0)lines.push(['#A78BFA','PAM · очки ×2 '+eff.pam.toFixed(1)+' с']);
+      if(eff.nad>0)lines.push(['#F0ABFC','NAD · контроль '+eff.nad.toFixed(1)+' с']);
+      if(bck>0)lines.push([C.lime,'Container Security · защит: '+bck]);
+      ctx.textAlign='left';
+      for(var li=0;li<lines.length;li++){
+        var lw=ctx.measureText(lines[li][1]).width+12;
+        ctx.fillStyle='rgba(10,18,48,.82)';rr(6,ey+li*21-14,lw,19,5);ctx.fill();
+        ctx.fillStyle=lines[li][0];ctx.fillText(lines[li][1],12,ey+li*21);
+      }
+      if(combo>=5){
+        var sc=1+comboPop*.6;
+        ctx.save();ctx.translate(W-12,boss?60:24);ctx.scale(sc,sc);
+        ctx.textAlign='right';ctx.fillStyle=comboPop>0?C.lime:C.ink;ctx.font='700 13px Unbounded,Manrope,sans-serif';
+        ctx.fillText('СЕРИЯ ×'+mult(),0,0);ctx.restore();
+      }
+      if(banner>0){
+        ctx.globalAlpha=Math.min(1,banner);
+        ctx.font='700 30px Unbounded,Manrope,sans-serif';
+        ctx.textAlign='center';ctx.fillStyle=wave===WAVES&&!endless?C.boss:C.ink;
+        ctx.fillText(wave===WAVES&&!endless?'ФИНАЛЬНАЯ ВОЛНА':'ВОЛНА '+wave,W/2,H*.36);
+        if(bannerSub){ctx.font='700 15px Manrope,sans-serif';ctx.fillStyle=C.lime;wrapText(bannerSub,W/2,H*.36+30,W-40,20);}
+        ctx.globalAlpha=1;
+      }
+    }
+    ctx.restore();
+  }
+
+  var lastScore=-1,lastWave='',lastBest=-1,lastInt=-1;
+  function hud(){
+    if(score!==lastScore){$('score').textContent=score;lastScore=score;}
+    var wl=endless?String(wave):wave+'/'+WAVES;
+    if(wl!==lastWave){$('wave').textContent=wl;lastWave=wl;}
+    if(best!==lastBest){$('best').textContent=best;lastBest=best;}
+    var iv=Math.round(integrity);
+    if(iv!==lastInt){
+      lastInt=iv;
+      $('intText').textContent=iv+'%';
+      var fill=$('intFill');
+      fill.style.width=iv+'%';
+      fill.classList.toggle('low',iv<35);
+    }
+  }
+
+  cv.addEventListener('pointerdown',function(e){
+    e.preventDefault();
+    var r=cv.getBoundingClientRect();
+    hit((e.clientX-r.left)*W/r.width,(e.clientY-r.top)*H/r.height);
+  });
+  $('go').addEventListener('click',reset);
+
+  function showTab(b){
+    $('tabT').setAttribute('aria-selected',b?'false':'true');
+    $('tabB').setAttribute('aria-selected',b?'true':'false');
+    $('threatlist').hidden=!!b;$('bonuslist').hidden=!b;
+    $('sheetBody').scrollTop=0;
+  }
+  function openSheet(){
+    if(state==='play')pauseGame();
+    $('sheet').hidden=false;
+    if(inTg&&tgv('6.1'))try{tg.BackButton.show();}catch(e){}
+  }
+  function closeSheet(){
+    $('sheet').hidden=true;
+    if(inTg&&tgv('6.1'))try{tg.BackButton.hide();}catch(e){}
+  }
+  $('infobtn').addEventListener('click',openSheet);
+  $('info0').addEventListener('click',openSheet);
+  $('sheetClose').addEventListener('click',closeSheet);
+  $('tabT').addEventListener('click',function(){showTab(false);});
+  $('tabB').addEventListener('click',function(){showTab(true);});
+  if(inTg&&tgv('6.1'))try{tg.BackButton.onClick(closeSheet);}catch(e){}
+
+  // links in the report open in the browser, not inside the mini app
+  $('ov').addEventListener('click',function(e){
+    var a=e.target.closest&&e.target.closest('a[href]');
+    if(a&&openExt(a.href))e.preventDefault();
+  });
+
+  // keep the 3:4 playfield as large as the screen allows
+  function fit(){
+    var h=(inTg&&tg.viewportStableHeight)||window.innerHeight;
+    document.documentElement.style.setProperty('--app-h',Math.round(h)+'px');
+    var st=$('stage'),fb=$('fieldbox'),r=st.getBoundingClientRect();
+    if(!r.width||!r.height)return;
+    var ratio=r.height/r.width,w,hh;
+    if(ratio<=4/3){H=640;w=Math.floor(r.height*.75);hh=Math.floor(r.height);}
+    else{H=Math.min(900,Math.round(480*ratio));w=Math.floor(r.width);hh=Math.floor(r.width*H/480);}
+    LINE=H-92;
+    var cw=Math.round(W*dpr),ch=Math.round(H*dpr);
+    if(cv.width!==cw||cv.height!==ch){cv.width=cw;cv.height=ch;}
+    fb.style.width=w+'px';fb.style.height=hh+'px';fb.style.aspectRatio='auto';
+  }
+  window.addEventListener('resize',fit);
+  window.addEventListener('orientationchange',function(){setTimeout(fit,200);});
+  if(inTg){
+    try{tg.onEvent('viewportChanged',function(ev){if(!ev||ev.isStateStable)fit();});}catch(e){}
+    try{tg.onEvent('deactivated',function(){if(state==='play')pauseGame();});}catch(e){}
+  }
+  if(document.fonts&&document.fonts.ready)document.fonts.ready.then(fit);
+  fit();setTimeout(fit,300);
+  $('pausebtn').addEventListener('click',function(){if(state==='play')pauseGame();else if(state==='pause')resumeGame();});
+  document.addEventListener('keydown',function(e){
+    var isP=e.key==='p'||e.key==='P'||e.key==='з'||e.key==='З';
+    if(!(isP||e.key==='Escape'))return;
+    if(state==='play'){pauseGame();e.preventDefault();}
+    else if(state==='pause'){resumeGame();e.preventDefault();}
+  });
+  document.addEventListener('visibilitychange',function(){if(document.hidden&&state==='play')pauseGame();});
+
+  var last=performance.now();
+  function frame(now){
+    var dt=Math.min(0.05,(now-last)/1000);
+    last=now;
+    update(dt);draw();hud();
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+  window.__pd={get:function(){return{state:state,wave:wave,score:score,integrity:integrity,boss:boss?boss.hp:null,threats:threats.length};},
+    threats:function(){var a=threats.map(function(t){return{x:t.x,y:t.y,k:t.kind};});if(boss)a.push({x:boss.x,y:boss.y,k:'boss'});return a;},
+    picks:function(){return picks.map(function(p){return{x:p.x,y:p.y,k:p.kind};});},give:function(k){collect({kind:k,x:W/2,y:200});},stats:function(){return stats;},hit:hit,skip:function(s){elapsed+=s;}};
+})();
+</script>
+</body>
+</html>
