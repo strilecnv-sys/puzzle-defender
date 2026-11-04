@@ -145,6 +145,7 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
   <div class="sh-top">
     <button class="tab" id="tab-sol" type="button" role="tab" aria-selected="true">Решения</button>
     <button class="tab" id="tab-thr" type="button" role="tab" aria-selected="false">Угрозы</button>
+    <button class="tab" id="tab-bon" type="button" role="tab" aria-selected="false">Бонусы</button>
     <button class="ib sh-x" id="sheetx" type="button" aria-label="Закрыть">×</button>
   </div>
   <div class="sh-body" id="sheetbody"></div>
@@ -346,23 +347,62 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
   });
   var W=480,H=720,PY=H-70,COLS=6,SX=70,SY=60,FX=W/2-(COLS-1)*SX/2,FY=88;
   var foes=[],bullets=[],shots=[],ship=null,sel='idm',fireT=0,diveT=0,sway=0,drop=0,dropT=0,lockT=0,hitT=0,boss=null,bossDone=false,bossT=0,breakT=0,gstats=null,keys={},pointerX=null,grp=0;
+  // ---------- power-ups ----------
+  var PU={
+    gun:{name:'Модернизация пушки',lbl:'ПУШКА+',col:'#AFFB33',
+      desc:'Пушка становится на уровень мощнее: сначала двойной, затем тройной веерный залп. Дополнительные выстрелы сбивают только угрозы своего цвета и не бьют по флагману.',
+      cost:'Попадание по кораблю снижает уровень пушки на один.'},
+    rate:{name:'SOC 24/7',lbl:'ТЕМП',col:'#2176FF',t:10,
+      desc:'Круглосуточный мониторинг: 10 секунд пушка стреляет в полтора раза чаще.'},
+    pierce:{name:'Threat Intelligence',lbl:'ПРОБОЙ',col:'#A78BFA',t:8,from:3,
+      desc:'8 секунд выстрел нужного цвета пробивает строй насквозь и сбивает всех на своём пути.'},
+    shield:{name:'Резервное копирование',lbl:'ЩИТ',col:'#6EE7B7',t:15,
+      desc:'Поглощает одно попадание по кораблю, в том числе шифрование пушки. Держится 15 секунд.'},
+    repair:{name:'Восстановление',lbl:'+10%',col:'#FFD43B',
+      desc:'Возвращает периметру 10% целостности. Выпадает, только когда периметр повреждён.'},
+    pulse:{name:'Изоляция сети',lbl:'ИМПУЛЬС',col:'#FF8F0C',from:5,
+      desc:'Стирает все вражеские выстрелы на поле, и строй 3 секунды не стреляет.'}
+  };
+  var PORD=['gun','rate','pierce','shield','repair','pulse'];
+  var caps=[],gun=1,buf={rate:0,pierce:0,shield:0},freezeT=0,dropCd=0;
+  function dropCap(x,y,k){
+    if(caps.length>=2||dropCd>0)return;
+    var ch=k==='ddos'?.04:.1;if(Math.random()>ch)return;
+    var l=[];
+    if(gun<3)l.push(['gun',wave<4?4:3]);
+    l.push(['rate',2]);
+    if(wave>=PU.pierce.from)l.push(['pierce',1.5]);
+    if(buf.shield<=0)l.push(['shield',2]);
+    if(integrity<80)l.push(['repair',1]);
+    if(wave>=PU.pulse.from)l.push(['pulse',1]);
+    caps.push({k:weighted(l),x:clamp(x,34,W-34),y:y,t:0});dropCd=2.5;
+  }
+  function takeCap(c){
+    var d=PU[c.k];gstats.caps++;haptic('ok');burst(c.x,c.y,d.col,14);score+=10;
+    if(c.k==='gun'){gun=Math.min(3,gun+1);float(ship.x,PY-46,'Пушка: уровень '+gun,d.col,true);}
+    else if(c.k==='repair'){integrity=Math.min(100,integrity+10);float(ship.x,PY-46,'Периметр +10%',d.col,true);}
+    else if(c.k==='pulse'){bullets=[];freezeT=3;flash=.35;float(W/2,H*.45,'Изоляция сети: строй молчит 3 с',d.col,true);}
+    else{buf[c.k]=d.t;float(ship.x,PY-46,d.name+' · '+d.t+' с',d.col,true);}
+  }
   function gameFit(w,h){var nh=clamp(Math.round(W*h/w),640,900);if(nh===H)return;H=nh;PY=H-70;cv.height=Math.round(H*dpr);}
 
   function gameMenu(){
     return '<p>На сеть надвигается строй <b>кораблей-угроз</b>. Ваш корабль сам стреляет выбранным <b>решением</b>: выстрел нужного цвета сбивает угрозу с одного попадания, другой — только царапает.</p>'+
       '<p>Корабли пикируют вниз. Прорвавшийся за нижний край — атака на периметр. Уворачивайтесь от их выстрелов: они тоже бьют по периметру.</p>'+
       (MOBILE?'<p>Ведите пальцем по полю — корабль следует за ним. Решения — кнопками под полем.</p>':'<p>Мышь или ← → — корабль, клавиши <b>1–0</b> или кнопки под полем — решения.</p>')+
+      '<p>Сбитые корабли иногда роняют <b>бонусы</b>: мощнее пушка, выше темп, щит, пробивающие выстрелы. Ловите их кораблём. Но враги стреляют чаще и прицельнее, а каждое попадание по кораблю снижает уровень пушки.</p>'+
       '<p>Продержитесь <b>12 волн</b>, в последней прилетит флагман целевой атаки.</p>';
   }
   function gameSolUse(s){return 'Выстрел этого цвета сбивает с одного попадания';}
   function gameActive(k){var n=0;foes.forEach(function(f){if(f.k===k)n++;});return n;}
-  function gameReport(){return '<dt>Сбито кораблей</dt><dd>'+gstats.kills+'</dd><dt>Точных попаданий</dt><dd>'+(gstats.hits?Math.round(gstats.exact/gstats.hits*100):0)+'%</dd><dt>Попаданий по вашему кораблю</dt><dd>'+gstats.hurt+'</dd>';}
-  function gameDebug(){return{foes:foes.length,boss:!!boss,sel:sel,hurt:gstats?gstats.hurt:0};}
+  function gameReport(){return '<dt>Сбито кораблей</dt><dd>'+gstats.kills+'</dd><dt>Точных попаданий</dt><dd>'+(gstats.hits?Math.round(gstats.exact/gstats.hits*100):0)+'%</dd><dt>Попаданий по вашему кораблю</dt><dd>'+gstats.hurt+'</dd><dt>Бонусов поймано</dt><dd>'+gstats.caps+'</dd>';}
+  function gameDebug(){return{foes:foes.length,boss:!!boss,sel:sel,hurt:gstats?gstats.hurt:0,gun:gun,buf:buf,caps:caps.length};}
   function gameHud(set){set('foes',state!=='menu'?String(foes.length+(boss?1:0)):'—');}
 
   function gameStart(){
     foes=[];bullets=[];shots=[];ship={x:W/2};sel='idm';lockT=0;hitT=0;boss=null;bossDone=false;grp=0;
-    gstats={kills:0,hits:0,exact:0,hurt:0};
+    gstats={kills:0,hits:0,exact:0,hurt:0,caps:0};
+    caps=[];gun=1;buf={rate:0,pierce:0,shield:0};freezeT=0;dropCd=0;
     setupWave(1);renderChips();
   }
   var flights=0;
@@ -376,7 +416,7 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
   }
   function spawnFlight(){
     var n=wave;flights--;drop=0;dropT=0;diveT=2.2;
-    var count=Math.min(15,5+Math.floor(n/2)),types=unlockedT(),l=[];
+    var count=Math.min(16,5+Math.floor(n/2)+(n>=4?1:0)),types=unlockedT(),l=[];
     types.forEach(function(t){l.push([t,t===TORD[n-1]?3:(t==='cred'||t==='sql'?1.4:1)]);});
     var slots=[];for(var r=0;r<3;r++)for(var c=0;c<COLS;c++)slots.push([c,r]);
     shuffleArr(slots);
@@ -408,15 +448,23 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
     ship.x=clamp(ship.x,24,W-24);
     // fire
     fireT-=dt;
-    if(fireT<=0&&lockT<=0){fireT=.2;shots.push({x:ship.x,y:PY-20,s:sel});}
-    for(i=shots.length-1;i>=0;i--){var s=shots[i];s.y-=720*dt;if(s.y<-10){shots.splice(i,1);continue;}if(shotHit(s))shots.splice(i,1);if(state!=='play')return;}
+    if(fireT<=0&&lockT<=0){fireT=buf.rate>0?.13:.2;var pr=buf.pierce>0;
+      if(gun===1)shots.push({x:ship.x,y:PY-20,s:sel,pr:pr});
+      else if(gun===2){shots.push({x:ship.x-9,y:PY-20,s:sel,pr:pr});shots.push({x:ship.x+9,y:PY-20,s:sel,side:1,pr:pr});}
+      else{shots.push({x:ship.x,y:PY-22,s:sel,pr:pr});shots.push({x:ship.x-12,y:PY-12,s:sel,vx:-110,side:1,pr:pr});shots.push({x:ship.x+12,y:PY-12,s:sel,vx:110,side:1,pr:pr});}}
+    for(i=shots.length-1;i>=0;i--){var s=shots[i];s.y-=720*dt;if(s.vx)s.x+=s.vx*dt;if(s.y<-10||s.x<-10||s.x>W+10){shots.splice(i,1);continue;}if(shotHit(s))shots.splice(i,1);if(state!=='play')return;}
+    // power-ups
+    if(buf.rate>0)buf.rate-=dt;if(buf.pierce>0)buf.pierce-=dt;if(buf.shield>0)buf.shield-=dt;if(freezeT>0)freezeT-=dt;if(dropCd>0)dropCd-=dt;
+    for(i=caps.length-1;i>=0;i--){var cp=caps[i];cp.t+=dt;cp.y+=105*dt;cp.x+=Math.sin(cp.t*2.4)*24*dt;
+      if(Math.abs(cp.y-PY)<28&&Math.abs(cp.x-ship.x)<40){caps.splice(i,1);takeCap(cp);continue;}
+      if(cp.y>H+20)caps.splice(i,1);}
     // formation drop
     dropT+=dt;if(dropT>5){dropT=0;drop=Math.min(drop+10,H*.3);}
     // dives
     diveT-=dt;
     var inForm=foes.filter(function(x){return x.mode==='form';});
     if(diveT<=0&&inForm.length){
-      diveT=Math.max(.7,2.6-wave*.17);
+      diveT=Math.max(.6,2.5-wave*.18);
       var pool=inForm.slice(),wts=pool.map(function(x){return[x,x.k==='sql'?2.5:1];});
       var d=weighted(wts);startDive(d);
       if(d.k==='ddos'&&d.g)inForm.forEach(function(o){if(o!==d&&o.g===d.g)startDive(o);});
@@ -438,17 +486,20 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
       }
       // enemy fire
       f.cd-=dt;
-      if(f.cd<=0&&f.mode!=='enter'&&f.y>0){f.cd=Math.max(1.4,4.5-wave*.2)+Math.random()*2;var n=f.k==='brute'?3:1;for(var q=0;q<n;q++)bullets.push({x:f.x,y:f.y+14+q*16,vy:230+wave*8,k:f.k});}
+      if(freezeT>0){if(f.cd<.6)f.cd=.6+Math.random();}
+      else if(f.cd<=0&&f.mode!=='enter'&&f.y>0){f.cd=Math.max(1.2,4.2-wave*.22)+Math.random()*2;var n=f.k==='brute'?3:1,bvy=240+wave*10,bvx=0;
+        if(wave>=6&&f.mode==='dive'&&f.y<PY-60)bvx=clamp((ship.x-f.x)/((PY-f.y)/bvy),-150,150);
+        for(var q=0;q<n;q++)bullets.push({x:f.x,y:f.y+14+q*16,vy:bvy,vx:bvx,k:f.k});}
     }
     // boss
     if(boss){
       boss.t+=dt;boss.y+=(boss.ty-boss.y)*Math.min(1,dt*2);boss.x=W/2+Math.sin(boss.t*.7)*150;
       bossT-=dt;
-      if(Math.random()<dt*1.2)bullets.push({x:boss.x+(Math.random()-.5)*60,y:boss.y+30,vy:260,k:'boss'});
+      if(freezeT<=0&&Math.random()<dt*1.4)bullets.push({x:boss.x+(Math.random()-.5)*60,y:boss.y+30,vy:270,vx:clamp((ship.x-boss.x)*.35,-120,120),k:'boss'});
       if(bossT<=0){float(W/2,H*.4,'Флагман прорвался',C.boss,true);boss=null;bossDone=true;if(breach('boss',25,W/2,H*.45))return;}
     }
     // enemy bullets
-    for(i=bullets.length-1;i>=0;i--){var b=bullets[i];b.y+=b.vy*dt;
+    for(i=bullets.length-1;i>=0;i--){var b=bullets[i];b.y+=b.vy*dt;if(b.vx)b.x+=b.vx*dt;
       if(b.y>PY-14&&b.y<PY+16&&Math.abs(b.x-ship.x)<22){bullets.splice(i,1);hurtShip(b);if(state!=='play')return;continue;}
       if(b.y>H+10)bullets.splice(i,1);}
     // wave end
@@ -461,12 +512,14 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
     if(f.k==='container'){var c=rint(COLS),r=rint(3);addFoe('container',c,r);}
   }
   function hurtShip(b){
+    if(buf.shield>0){buf.shield=0;hitT=.3;burst(ship.x,PY,PU.shield.col,16);float(ship.x,PY-46,'Щит поглотил удар',PU.shield.col);haptic('sel');return;}
     gstats.hurt++;hitT=.5;haptic('hit');
+    if(gun>1){gun--;float(ship.x,PY-62,'Пушка повреждена: уровень '+gun,C.orange);}
     if(b.k==='ransom'){lockT=3;float(ship.x,PY-40,'Пушка зашифрована на 3 с',C.orange);}
     breach(null,b.k==='boss'?2:1,ship.x,PY-24);
   }
   function shotHit(s){
-    if(boss&&Math.abs(s.x-boss.x)<62&&Math.abs(s.y-boss.y)<30){
+    if(boss&&!s.side&&Math.abs(s.x-boss.x)<62&&Math.abs(s.y-boss.y)<30){
       var need=boss.need[boss.phase];
       if(s.s===need){boss.hp--;burst(s.x,s.y,C.boss,4);score+=5;
         if(boss.hp<=0){boss.phase++;score+=60;haptic('hit');float(boss.x,boss.y+40,'Щит '+boss.phase+'/4 снят · +60',C.boss);
@@ -481,16 +534,17 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
         gstats.hits++;
         if(f.k==='vuln'){f.hits[s.s]=1;if(Object.keys(f.hits).length>=2)kill(f,true);else{f.hp=1;burst(s.x,s.y,TH.vuln.col,4);}return true;}
         var match=solFor(f.k)===s.s;
+        if(!match&&s.side){gstats.hits--;burst(s.x,s.y,C.muted,2);return true;}
         if(match){gstats.exact++;
-          if(f.k==='ddos'&&f.g){foes.filter(function(o){return o.g===f.g;}).forEach(function(o){kill(o,true);});return true;}
-          kill(f,true);return true;}
+          if(f.k==='ddos'&&f.g){foes.filter(function(o){return o.g===f.g;}).forEach(function(o){kill(o,true);});return !s.pr;}
+          kill(f,true);return !s.pr;}
         f.hp--;burst(s.x,s.y,TH[f.k].col,4);if(f.hp<=0)kill(f,false);
         return true;
       }
     }
     return false;
   }
-  function kill(f,exact){var i=foes.indexOf(f);if(i<0)return;foes.splice(i,1);gstats.kills++;neutral(f.k,exact?TH[f.k].pts:Math.round(TH[f.k].pts/2),f.x,f.y);}
+  function kill(f,exact){var i=foes.indexOf(f);if(i<0)return;foes.splice(i,1);gstats.kills++;neutral(f.k,exact?TH[f.k].pts:Math.round(TH[f.k].pts/2),f.x,f.y);if(state==='play')dropCap(f.x,f.y,f.k);}
 
   // ---------- draw ----------
   var stars=[];for(var si=0;si<70;si++)stars.push({x:Math.random()*480,y:Math.random()*900,s:Math.random()*1.6+.4,v:10+Math.random()*30});
@@ -503,18 +557,42 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
     ctx.fillStyle=C.orange;ctx.font='700 10px "JetBrains Mono",monospace';ctx.textAlign='left';ctx.textBaseline='middle';ctx.fillText('ПЕРИМЕТР',8,H-11);
     if(boss)drawBoss();
     foes.forEach(drawFoe);
-    shots.forEach(function(s){ctx.fillStyle=scol(s.s);rr(s.x-3,s.y-9,6,18,3);ctx.fill();});
+    shots.forEach(function(s){ctx.fillStyle=scol(s.s);if(s.pr){ctx.globalAlpha=.35;rr(s.x-6,s.y-12,12,24,6);ctx.fill();ctx.globalAlpha=1;}rr(s.x-3,s.y-9,6,18,3);ctx.fill();});
+    caps.forEach(drawCap);
     bullets.forEach(function(b){var c=b.k==='boss'?C.boss:(b.k==='ransom'?TH.ransom.col:'#ff4d5e');ctx.fillStyle=C.ink;ctx.strokeStyle=c;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(b.x,b.y-7);ctx.lineTo(b.x+6,b.y);ctx.lineTo(b.x,b.y+7);ctx.lineTo(b.x-6,b.y);ctx.closePath();ctx.stroke();ctx.fill();});
     if(ship){
       var col=lockT>0?C.enc:scol(sel),x=ship.x,y=PY;
       ctx.globalAlpha=hitT>0&&Math.floor(hitT*20)%2?0.4:1;
       ctx.fillStyle=col;ctx.beginPath();ctx.moveTo(x,y-24);ctx.lineTo(x+22,y+14);ctx.lineTo(x+8,y+8);ctx.lineTo(x,y+16);ctx.lineTo(x-8,y+8);ctx.lineTo(x-22,y+14);ctx.closePath();ctx.fill();
       ctx.globalAlpha=1;
+      if(buf.shield>0){ctx.strokeStyle=PU.shield.col;ctx.lineWidth=2.5;ctx.globalAlpha=buf.shield<3&&Math.floor(clock*8)%2?.3:.85;ctx.beginPath();ctx.arc(x,y-2,32,0,6.2832);ctx.stroke();ctx.globalAlpha=1;}
       ctx.fillStyle=C.ink;ctx.font='800 11px Manrope,sans-serif';ctx.textAlign='center';ctx.fillText(lockT>0?'зашифровано':SOL[sel].abbr,x,y+32);
+      for(var gi=0;gi<3;gi++){ctx.globalAlpha=gi<gun?1:.22;ctx.fillStyle=PU.gun.col;rr(x-16+gi*11,y+42,9,4,2);ctx.fill();}ctx.globalAlpha=1;
     }
-    if(boss){ctx.fillStyle=C.boss;ctx.font='700 12px Manrope,sans-serif';ctx.textAlign='right';ctx.fillText('прорыв флагмана через '+Math.ceil(bossT)+' с',W-10,18);}
+    drawBuffs();
+    if(boss){ctx.fillStyle=C.boss;ctx.font='700 12px Manrope,sans-serif';ctx.textAlign='right';ctx.fillText('прорыв флагмана через '+Math.ceil(bossT)+' с',W-10,40);}
     ctx.restore();
     drawFx(W,H);
+  }
+  function drawCap(c){
+    var d=PU[c.k],x=c.x,y=c.y;
+    ctx.font='800 11px Manrope,sans-serif';var w=Math.max(52,ctx.measureText(d.lbl).width+20);
+    var pulse=.75+.25*Math.sin(c.t*8);
+    ctx.globalAlpha=.25*pulse;ctx.fillStyle=d.col;rr(x-w/2-5,y-16,w+10,32,12);ctx.fill();ctx.globalAlpha=1;
+    ctx.fillStyle=d.col;rr(x-w/2,y-11,w,22,8);ctx.fill();
+    ctx.fillStyle=C.navy;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(d.lbl,x,y+.5);
+  }
+  function drawBuffs(){
+    var l=[];
+    if(gun>1)l.push([PU.gun.col,'ПУШКА ×'+gun]);
+    if(buf.rate>0)l.push([PU.rate.col,'ТЕМП '+Math.ceil(buf.rate)]);
+    if(buf.pierce>0)l.push([PU.pierce.col,'ПРОБОЙ '+Math.ceil(buf.pierce)]);
+    if(buf.shield>0)l.push([PU.shield.col,'ЩИТ '+Math.ceil(buf.shield)]);
+    if(freezeT>0)l.push([PU.pulse.col,'ИЗОЛЯЦИЯ '+Math.ceil(freezeT)]);
+    if(!l.length)return;
+    ctx.font='800 10px Manrope,sans-serif';ctx.textBaseline='middle';ctx.textAlign='left';
+    var x=8,y=16;
+    l.forEach(function(it){var w=ctx.measureText(it[1]).width+14;ctx.fillStyle='rgba(10,18,48,.8)';rr(x,y-9,w,18,6);ctx.fill();ctx.strokeStyle=it[0];ctx.lineWidth=1.5;ctx.stroke();ctx.fillStyle=it[0];ctx.fillText(it[1],x+7,y+.5);x+=w+5;});
   }
   function drawFoe(f){
     var col=TH[f.k].col,x=f.x,y=f.y;
@@ -572,8 +650,8 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
   }
   document.addEventListener('keyup',function(e){if(e.key==='ArrowLeft'||e.key==='a'||e.key==='ф')keys.left=false;if(e.key==='ArrowRight'||e.key==='d'||e.key==='в')keys.right=false;});
   function gamePause(){keys={};}
-  function gameMenuEnter(){foes=[];bullets=[];shots=[];ship=null;boss=null;renderChips();}
-  var gameApi={foes:function(){return foes;},boss:function(){return boss;},bullets:function(){return bullets;},ship:function(){return ship;},choose:choose,setX:function(x){if(ship)ship.x=clamp(x,24,W-24);},K:function(){return{PY:PY,H:H};}};
+  function gameMenuEnter(){foes=[];bullets=[];shots=[];ship=null;boss=null;caps=[];renderChips();}
+  var gameApi={caps:function(){return caps;},drop:function(k){caps.push({k:k,x:ship.x,y:PY-120,t:0});},gun:function(){return gun;},buf:function(){return buf;},foes:function(){return foes;},boss:function(){return boss;},bullets:function(){return bullets;},ship:function(){return ship;},choose:choose,setX:function(x){if(ship)ship.x=clamp(x,24,W-24);},K:function(){return{PY:PY,H:H};}};
 
   // ================= shared shell: panels, menus, report =================
   function fromWave(k){return GAME.unlock?(GAME.unlock[k]||99):TORD.indexOf(k)+1;}
@@ -596,6 +674,13 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
       '<span class="ds">'+esc(t.desc)+'</span><span class="gm">В игре: '+esc(t.trait)+'</span>'+
       '<span class="vs">Закрывает: <b style="color:'+t.col+'">'+(s?SOL[s].abbr:esc(GAME.vulnClose||'два разных решения · аудит ИБ'))+'</b></span></span></div>';
   }
+  function bonCard(k){
+    var d=PU[k],locked=state!=='menu'&&d.from&&d.from>wave;
+    return '<div class="card'+(locked?' off':'')+'" style="--pc:'+d.col+'"><span class="sq" style="width:auto;min-width:40px;padding:0 6px">'+esc(d.lbl)+'</span><span class="body">'+
+      '<span class="hd"><span class="nm">'+esc(d.name)+'</span>'+(d.from?'<span class="badge">'+lockLabel(d.from)+'</span>':'')+'</span>'+
+      '<span class="ds">'+esc(d.desc)+'</span>'+(d.cost?'<span class="gm" style="color:var(--threat)">'+esc(d.cost)+'</span>':'')+'</span></div>';
+  }
+  function bonusIntro(){return '<p style="margin:0 0 8px;font-size:12.5px;color:var(--muted)">Бонусы иногда выпадают из сбитых кораблей. Поймайте капсулу кораблём, пока она не улетела за край.</p>';}
   function bossCard(){
     if(!GAME.bossText)return '';
     return '<div class="card'+(state!=='menu'&&wave<GAME.waves?' off':'')+'" style="--pc:'+C.boss+'">'+iconSVG('boss',26)+'<span class="body"><span class="hd"><span class="nm">Целевая атака</span><span class="badge">финал</span></span>'+
@@ -621,12 +706,14 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
   function renderSheet(){
     $('tab-sol').setAttribute('aria-selected',sheetTab==='sol'?'true':'false');
     $('tab-thr').setAttribute('aria-selected',sheetTab==='thr'?'true':'false');
-    var b=$('sheetbody');b.innerHTML=sheetTab==='sol'?SORD.map(solCard).join(''):TORD.map(thrCard).join('')+bossCard();b.scrollTop=0;
+    $('tab-bon').setAttribute('aria-selected',sheetTab==='bon'?'true':'false');
+    var b=$('sheetbody');b.innerHTML=sheetTab==='sol'?SORD.map(solCard).join(''):sheetTab==='bon'?bonusIntro()+PORD.map(bonCard).join(''):TORD.map(thrCard).join('')+bossCard();b.scrollTop=0;
   }
   if($('sheet')){
     $('helpbtn').addEventListener('click',function(){openSheet('sol');});
     $('tab-sol').addEventListener('click',function(){sheetTab='sol';renderSheet();});
     $('tab-thr').addEventListener('click',function(){sheetTab='thr';renderSheet();});
+    $('tab-bon').addEventListener('click',function(){sheetTab='bon';renderSheet();});
     $('sheetx').addEventListener('click',closeSheet);
     $('sheetbg').addEventListener('click',closeSheet);
   }
