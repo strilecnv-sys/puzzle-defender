@@ -1,0 +1,757 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Puzzle Minesweeper</title>
+<meta name="theme-color" content="#0a1230">
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Manrope:wght@400;600;700;800&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout (phone, Telegram Mini App): one screen, no page scroll. Top bar with stats and buttons, perimeter meter, the game field, game controls, one-line hint. Reference opens as a bottom sheet. */
+:root{
+  --bg:#0a1230;--surface:#101a40;--surface2:#16245a;--line:#22306a;--fg:#eef2ff;--muted:#93a0cf;
+  --threat:#ff8f0c;--good:#affb33;--core:#2176ff;
+  --font-display:"Unbounded","Arial Black",sans-serif;
+  --font-body:"Manrope",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+button{font:inherit;color:inherit}
+.k{font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.v{font-family:var(--font-display);font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.track{height:8px;background:var(--surface);border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.fill{height:100%;width:100%;background:var(--good);transition:width .25s ease,background-color .25s ease}
+.fill.low{background:var(--threat)}
+.field{position:relative;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--bg);width:300px;height:300px}
+canvas{display:block;width:100%;height:100%;touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent}
+.inv{display:flex;flex-wrap:wrap;gap:5px;align-items:center;min-height:26px}
+.inv-e{font-size:12px;color:var(--muted)}
+.ichip{font-weight:800;font-size:11px;padding:3px 7px;border-radius:5px;background:var(--pc);color:var(--bg);white-space:nowrap}
+.ichip.enc{background:#5b6690;color:var(--fg)}
+.ov{margin:auto;width:100%;max-width:440px;display:flex;flex-direction:column;gap:12px}
+.ov.mid{align-items:center;text-align:center}
+.ov .logo{height:30px;align-self:center}
+.ov h2{margin:0;font-family:var(--font-display);font-weight:700;font-size:21px;line-height:1.2;text-wrap:balance}
+.ov p{margin:0;color:var(--muted);font-size:13px}
+.ov p b{color:var(--fg)}
+.ov .small{font-size:12px}
+.lbl{font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.btn{appearance:none;border:0;cursor:pointer;background:var(--good);color:var(--bg);font-family:var(--font-display);font-weight:700;font-size:13px;letter-spacing:.01em;padding:13px 18px;border-radius:8px}
+.btn:active{transform:translateY(1px)}
+.btn.ghost{background:transparent;color:var(--fg);border:1px solid var(--line)}
+.btn:focus-visible,.ib:focus-visible{outline:2px solid var(--good);outline-offset:2px}
+.acts{display:flex;flex-direction:column;gap:8px;width:100%}
+.acts .btn{width:100%}
+.stars{font-size:28px;letter-spacing:5px;color:var(--good);line-height:1}
+.stars i{font-style:normal;color:var(--line)}
+.rep{display:grid;grid-template-columns:1fr auto;gap:4px 14px;margin:0;width:100%;font-size:13px;text-align:left}
+.rep dt{color:var(--muted)}
+.rep dd{margin:0;font-family:var(--font-mono);font-size:12px;text-align:right;font-variant-numeric:tabular-nums}
+.recs{display:flex;flex-direction:column;gap:8px;width:100%;text-align:left}
+.rec{border-left:3px solid var(--pc);background:var(--surface);padding:10px 12px;border-radius:6px;font-size:13px;color:var(--muted);line-height:1.45}
+.rec b{color:var(--fg)}
+.rec .pz{display:block;margin-top:6px;color:var(--fg)}
+.site{color:var(--good);font-weight:700}
+.ib{flex:none;width:38px;height:38px;display:grid;place-items:center;background:var(--surface);border:1px solid var(--line);border-radius:8px;cursor:pointer;font-weight:800;font-size:15px}
+.ib[aria-pressed="true"]{border-color:var(--good);color:var(--good)}
+.ib[disabled]{opacity:.35;cursor:default}
+.cards{display:flex;flex-direction:column;gap:8px}
+.card{display:flex;gap:10px;align-items:flex-start;background:var(--surface);border:1px solid var(--line);border-left:3px solid var(--pc);border-radius:8px;padding:9px 11px}
+.card.off{opacity:.45}
+.card.focus{border-color:var(--good);border-left-color:var(--pc)}
+.card .body{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
+.card .hd{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.card .nm{font-weight:800;font-size:13px;line-height:1.3}
+.card .ds{font-size:12px;color:var(--muted);line-height:1.4}
+.card .gm{font-size:12px;color:var(--good);line-height:1.4}
+.card .vs{display:flex;align-items:center;gap:6px;font-size:12px;flex-wrap:wrap}
+.badge{font-family:var(--font-mono);font-size:10px;white-space:nowrap;color:var(--muted)}
+.badge.new{color:var(--bg);background:var(--good);padding:1px 6px;border-radius:3px}
+.sq{flex:none;width:40px;height:30px;border-radius:6px;background:var(--surface2);border:2px solid var(--pc);display:grid;place-items:center;font-weight:800;font-size:10px;white-space:nowrap;overflow:hidden}
+.ico{flex:none;display:block}
+@media (prefers-reduced-motion:reduce){.fill{transition:none}}
+.toast{position:absolute;left:10px;right:10px;top:12%;z-index:4;display:flex;gap:12px;align-items:flex-start;background:rgba(10,18,48,.97);border:2px solid var(--pc);border-radius:12px;padding:12px 14px;font-size:14px;line-height:1.4;pointer-events:none}
+.toast b{display:block;color:var(--pc);font-family:var(--font-display);font-size:15px;margin-bottom:2px}
+.toast i{display:block;font-style:normal;color:var(--good);font-weight:700;margin-top:2px}
+.field.hurt{animation:hurt .6s ease}
+@keyframes hurt{0%{box-shadow:inset 0 0 0 5px var(--threat)}100%{box-shadow:inset 0 0 0 0 transparent}}
+@media (prefers-reduced-motion:reduce){.field.hurt{animation:none}}
+
+:root{--app-h:100vh;--pt:calc(env(safe-area-inset-top,0px) + var(--tg-content-safe-area-inset-top,0px));--pb:calc(env(safe-area-inset-bottom,0px) + var(--tg-content-safe-area-inset-bottom,0px))}
+html,body{height:100%;margin:0;overflow:hidden;overscroll-behavior:none;background:var(--bg)}
+body{color:var(--fg);font-family:var(--font-body);font-size:14px;line-height:1.45;-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none}
+button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.app{height:var(--app-h);display:flex;flex-direction:column;gap:8px;padding:calc(var(--pt) + 8px) max(10px,env(safe-area-inset-right,0px)) calc(var(--pb) + 8px) max(10px,env(safe-area-inset-left,0px))}
+.top{display:flex;align-items:center;gap:8px;flex:none}
+.logo{height:22px;width:auto;display:block;flex:none}
+.stats{display:flex;gap:12px;flex:1;min-width:0;justify-content:flex-end}
+.st{display:flex;flex-direction:column;line-height:1.1}
+.st .k{font-size:9px}
+.st .v{font-size:15px}
+.meter{display:flex;align-items:center;gap:8px;flex:none;font-size:11px;color:var(--muted)}
+.meter .track{flex:1;height:6px}
+.meter b{font-family:var(--font-mono);font-weight:500;color:var(--fg);min-width:36px;text-align:right}
+.stage{flex:1;min-height:0;display:flex;align-items:center;justify-content:center}
+.hint{flex:none;min-height:34px;font-size:12px;color:var(--muted);line-height:1.4;display:block;padding-top:2px}
+.hint b{color:var(--fg)}
+.overlay{position:fixed;inset:0;z-index:10;overflow-y:auto;-webkit-overflow-scrolling:touch;background:rgba(10,18,48,.96);padding:calc(var(--pt) + 18px) 16px calc(var(--pb) + 18px);display:flex;flex-direction:column;-webkit-user-select:text;user-select:text}
+.acts .btn{padding:14px 16px}
+.sheet-bg{position:fixed;inset:0;z-index:20;background:rgba(0,0,0,.5)}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:21;max-height:82%;display:flex;flex-direction:column;background:var(--bg);border-top:1px solid var(--line);border-radius:14px 14px 0 0;padding:10px 12px calc(var(--pb) + 12px)}
+.sh-top{display:flex;align-items:center;gap:6px;flex:none;margin-bottom:8px}
+.tab{appearance:none;cursor:pointer;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 14px;font-weight:700;font-size:13px}
+.tab[aria-selected="true"]{border-color:var(--good);color:var(--good)}
+.sh-x{margin-left:auto}
+.sh-body{overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column;gap:8px;-webkit-user-select:text;user-select:text}
+.chips{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;flex:none;min-height:40px}
+.chip{appearance:none;cursor:pointer;display:flex;align-items:center;gap:6px;height:40px;padding:0 12px;border-radius:8px;background:var(--surface);border:2px solid var(--pc);font-weight:800;font-size:13px;color:var(--fg)}
+.chip i{font-style:normal;font-family:var(--font-mono);font-weight:500;font-size:11px;color:var(--muted)}
+.chip.on{background:var(--pc);color:var(--bg)}
+.chip.on i{color:var(--bg)}
+.chip:focus-visible{outline:2px solid var(--good);outline-offset:2px}
+.chip.open{--pc:#eef2ff}
+
+.chip{height:34px;padding:0 9px;font-size:12px}.chips{gap:5px}
+</style>
+</head>
+<body>
+
+
+<div class="app">
+  <div class="top">
+    <svg class="logo" role="img" aria-label="Puzzle Systems" viewBox="0 0 498 165" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M0.150005 132.408C0.150005 121.83 7.94225 113.36 18.5954 112.814C27.517 112.362 35.648 110.122 42.8003 104.495C59.7212 91.1501 60.8693 64.7995 45.0966 49.9679C38.189 43.4743 30.0203 40.2746 20.5717 39.8982C12.3466 39.5782 5.81538 36.0585 2.14512 28.4921C-1.33692 21.3398 -0.50876 14.3005 4.14024 7.78809C8.48808 1.70863 16.9015 -1.26522 24.4867 0.541676C32.053 2.34857 38.1137 8.63507 39.2995 15.9191C40.1653 21.1892 40.3347 26.6852 42.0474 31.6542C46.5459 44.7354 55.9568 52.697 69.5838 55.4074C72.9717 56.085 76.4914 56.1414 79.8982 56.7625C87.5022 58.1554 92.6029 62.7667 95.0121 69.9378C97.5531 77.5042 95.8403 84.393 90.2878 90.209C86.2223 94.4815 81.0463 96.0814 75.3621 96.1379C59.0436 96.3073 43.1956 108.579 40.2594 127.1C39.77 130.168 39.9017 133.349 39.2995 136.379C37.342 146.336 28.0252 153.281 18.2378 152.302C7.77285 151.248 0.150005 142.873 0.150005 132.408Z" fill="#FF8F0C"/><path d="M19.5937 56.6497C30.5857 56.6497 39.1121 65.2137 39.0933 76.2622C39.0933 87.066 30.4352 95.743 19.6313 95.7618C8.75223 95.7806 0 87.0472 0 76.2057C0 65.2513 8.6393 56.6497 19.5937 56.6309V56.6497Z" fill="#AFFB33"/><path d="M133.035 113.282C144.027 113.282 152.554 121.847 152.535 132.895C152.535 143.699 143.877 152.376 133.073 152.395C122.194 152.413 113.441 143.68 113.441 132.839C113.441 121.884 122.081 113.282 133.035 113.264V113.282Z" fill="#2176FF"/><path d="M136.234 56.7621C132.827 56.1409 129.326 56.0845 125.919 55.4069C112.292 52.6777 102.881 44.7349 98.3829 31.6537C97.837 30.035 98.3829 28.2658 99.7757 27.2682C102.561 25.2355 106.326 25.179 109.187 27.0988L120.48 34.684L120.913 35.004C124.244 37.6014 128.46 39.1448 133.034 39.1448C143.819 39.126 152.477 30.4491 152.496 19.6454C152.515 8.57812 143.988 0.0141738 133.015 0.0141738C128.328 0.0141738 124.075 1.59521 120.724 4.24909L109.262 12.399C106.382 14.4505 102.524 14.4317 99.6628 12.3425L88.5767 4.28673C86.3369 2.51748 83.7018 1.19995 80.8409 0.522364C73.2557 -1.28453 64.8423 1.70814 60.5133 7.76878C55.8455 14.2811 55.0173 21.3205 58.5182 28.5105C62.1885 36.0768 68.7196 39.5965 76.9448 39.9165C86.3934 40.2741 94.562 43.4927 101.47 49.9862C117.242 64.8178 116.094 91.1496 99.1734 104.513C92.0211 110.16 83.9089 112.381 74.9685 112.832C64.3153 113.378 56.5231 121.829 56.5231 132.426C56.5231 142.891 64.1459 151.267 74.6109 152.321C84.3982 153.299 93.7151 146.354 95.6725 136.397C96.2748 133.367 96.1431 130.186 96.6324 127.118C99.5687 108.579 115.417 96.3068 131.735 96.1562C137.438 96.0997 142.595 94.4999 146.661 90.2273C152.213 84.3925 153.926 77.5037 151.385 69.9562C148.976 62.7851 143.875 58.1737 136.271 56.7809L136.234 56.7621Z" fill="#2176FF"/><path d="M210.088 57.2389V95.1523H200.584V61.3841L204.932 65.681H175.915L180.212 61.3841V95.1523H170.658V57.2389H210.088ZM224.331 87.5191V79.8353H250.517V87.5191H224.331ZM243.844 57.2389L261.335 95.1523H251.174L236.16 61.2325H239.092L224.129 95.1523H213.968L231.459 57.2389H243.844ZM281.007 95.9612C277.064 95.9612 273.61 95.4051 270.644 94.293C267.678 93.1808 265.37 91.6138 263.719 89.5917C262.067 87.536 261.174 85.1432 261.039 82.4134H270.593C270.863 84.4018 271.874 85.9352 273.627 87.0136C275.379 88.0583 277.839 88.5807 281.007 88.5807C283.973 88.5807 286.264 88.1594 287.882 87.3169C289.533 86.4744 290.359 85.2106 290.359 83.5256C290.359 82.0764 289.668 81.0148 288.286 80.3408C286.905 79.6668 284.664 79.3298 281.563 79.3298H274.435V72.9603H281.411C283.265 72.9603 284.782 72.775 285.961 72.4043C287.141 72.0336 288.017 71.5112 288.59 70.8372C289.163 70.1295 289.449 69.3544 289.449 68.5118C289.449 67.5008 289.112 66.6414 288.438 65.9337C287.764 65.226 286.804 64.7036 285.557 64.3666C284.31 63.9959 282.81 63.8106 281.058 63.8106C278.193 63.8106 275.918 64.3329 274.233 65.3777C272.582 66.3887 271.605 67.821 271.301 69.6745H261.848C262.017 67.2144 262.876 64.9901 264.426 63.0017C266.01 61.0134 268.234 59.4295 271.099 58.2499C273.964 57.0367 277.435 56.4301 281.513 56.4301C285.085 56.4301 288.185 56.885 290.814 57.795C293.443 58.7049 295.482 59.9518 296.931 61.5358C298.414 63.1197 299.155 64.9564 299.155 67.0458C299.155 68.7646 298.633 70.3485 297.588 71.7977C296.577 73.2468 294.976 74.3926 292.785 75.2351C290.629 76.0777 287.831 76.4821 284.394 76.4484V75.4374C287.663 75.2689 290.46 75.5048 292.785 76.1451C295.145 76.7517 296.948 77.729 298.194 79.077C299.475 80.4251 300.115 82.1438 300.115 84.2333C300.115 86.5249 299.374 88.5638 297.891 90.35C296.408 92.1024 294.235 93.4842 291.37 94.4952C288.539 95.4725 285.085 95.9612 281.007 95.9612ZM311.551 57.2389H347.999V95.1523H338.444V61.3841L342.741 65.681H316.859L320.903 62.4962C321.139 64.8553 321.307 67.1132 321.409 69.2701C321.543 71.3933 321.611 73.4153 321.611 75.3363C321.611 80.1555 321.173 84.0816 320.296 87.1147C319.454 90.1141 318.106 92.3383 316.252 93.7875C314.432 95.2029 312.057 95.9106 309.125 95.9106C307.878 95.9106 306.648 95.7758 305.434 95.5062C304.221 95.2366 303.126 94.849 302.149 94.3435V86.407C303.631 86.9799 304.996 87.2663 306.243 87.2663C308.501 87.2663 310.119 86.2385 311.096 84.1827C312.107 82.0933 312.613 78.6895 312.613 73.9714C312.613 71.7471 312.528 69.2533 312.36 66.4898C312.191 63.6926 311.922 60.609 311.551 57.2389Z" fill="white"/><path d="M212.262 135.517C211.891 138.786 210.762 141.667 208.875 144.161C206.988 146.621 204.494 148.542 201.393 149.924C198.293 151.305 194.754 151.996 190.777 151.996C186.43 151.996 182.605 151.171 179.302 149.519C176.033 147.868 173.489 145.559 171.669 142.594C169.849 139.628 168.939 136.174 168.939 132.231C168.939 128.288 169.849 124.833 171.669 121.868C173.489 118.902 176.033 116.594 179.302 114.942C182.605 113.291 186.43 112.465 190.777 112.465C194.754 112.465 198.293 113.156 201.393 114.538C204.494 115.92 206.988 117.841 208.875 120.301C210.762 122.761 211.891 125.642 212.262 128.945H202.657C202.32 127.226 201.629 125.76 200.584 124.547C199.573 123.334 198.225 122.407 196.54 121.767C194.889 121.093 192.968 120.756 190.777 120.756C188.25 120.756 186.076 121.227 184.256 122.171C182.436 123.081 181.038 124.395 180.061 126.114C179.083 127.833 178.595 129.872 178.595 132.231C178.595 134.59 179.083 136.629 180.061 138.347C181.038 140.066 182.436 141.397 184.256 142.341C186.076 143.251 188.25 143.706 190.777 143.706C192.968 143.706 194.889 143.386 196.54 142.745C198.225 142.105 199.573 141.178 200.584 139.965C201.629 138.752 202.32 137.269 202.657 135.517H212.262ZM217.606 151.188V113.274H227.008V146.233L224.228 145.677L246.976 113.274H259.411V151.188H250.059V117.672L252.789 118.228L229.738 151.188H217.606ZM308.378 135.517C308.007 138.786 306.878 141.667 304.991 144.161C303.104 146.621 300.61 148.542 297.51 149.924C294.409 151.305 290.871 151.996 286.894 151.996C282.546 151.996 278.721 151.171 275.419 149.519C272.15 147.868 269.605 145.559 267.786 142.594C265.966 139.628 265.056 136.174 265.056 132.231C265.056 128.288 265.966 124.833 267.786 121.868C269.605 118.902 272.15 116.594 275.419 114.942C278.721 113.291 282.546 112.465 286.894 112.465C290.871 112.465 294.409 113.156 297.51 114.538C300.61 115.92 303.104 117.841 304.991 120.301C306.878 122.761 308.007 125.642 308.378 128.945H298.773C298.436 127.226 297.746 125.76 296.701 124.547C295.69 123.334 294.342 122.407 292.657 121.767C291.005 121.093 289.084 120.756 286.894 120.756C284.366 120.756 282.193 121.227 280.373 122.171C278.553 123.081 277.154 124.395 276.177 126.114C275.2 127.833 274.711 129.872 274.711 132.231C274.711 134.59 275.2 136.629 276.177 138.347C277.154 140.066 278.553 141.397 280.373 142.341C282.193 143.251 284.366 143.706 286.894 143.706C289.084 143.706 291.005 143.386 292.657 142.745C294.342 142.105 295.69 141.178 296.701 139.965C297.746 138.752 298.436 137.269 298.773 135.517H308.378ZM324.172 117.47H333.726V151.188H324.172V117.47ZM309.411 113.274H348.487V121.716H309.411V113.274ZM384.965 128.692V135.769H357.516V128.692H384.965ZM363.986 132.231L361.459 147.902L357.465 143.403H386.583V151.188H351.904L354.836 132.231L351.904 113.274H386.33V121.059H357.465L361.459 116.56L363.986 132.231ZM447.199 113.274V151.188H438.1V116.61L440.324 116.762L424.906 151.188H415.15L399.731 116.863L401.956 116.661V151.188H392.856V113.274H407.567L421.974 146.436H418.132L432.489 113.274H447.199ZM496.168 135.517C495.797 138.786 494.669 141.667 492.781 144.161C490.894 146.621 488.4 148.542 485.3 149.924C482.199 151.305 478.661 151.996 474.684 151.996C470.336 151.996 466.511 151.171 463.209 149.519C459.94 147.868 457.395 145.559 455.576 142.594C453.756 139.628 452.846 136.174 452.846 132.231C452.846 128.288 453.756 124.833 455.576 121.868C457.395 118.902 459.94 116.594 463.209 114.942C466.511 113.291 470.336 112.465 474.684 112.465C478.661 112.465 482.199 113.156 485.3 114.538C488.4 115.92 490.894 117.841 492.781 120.301C494.669 122.761 495.797 125.642 496.168 128.945H486.563C486.226 127.226 485.536 125.76 484.491 124.547C483.48 123.334 482.132 122.407 480.447 121.767C478.795 121.093 476.874 120.756 474.684 120.756C472.156 120.756 469.983 121.227 468.163 122.171C466.343 123.081 464.944 124.395 463.967 126.114C462.99 127.833 462.501 129.872 462.501 132.231C462.501 134.59 462.99 136.629 463.967 138.347C464.944 140.066 466.343 141.397 468.163 142.341C469.983 143.251 472.156 143.706 474.684 143.706C476.874 143.706 478.795 143.386 480.447 142.745C482.132 142.105 483.48 141.178 484.491 139.965C485.536 138.752 486.226 137.269 486.563 135.517H496.168Z" fill="white"/></svg>
+    <div class="stats">
+      <div class="st"><span class="k">Объект</span><span class="v" id="wave">—</span></div>
+      <div class="st"><span class="k">Время</span><span class="v" id="time">—</span></div>
+      <div class="st"><span class="k">Счёт</span><span class="v" id="score">0</span></div>
+    </div>
+    <button class="ib" id="helpbtn" type="button" aria-label="Справочник решений и угроз">?</button>
+    <button class="ib" id="pausebtn" type="button" aria-label="Пауза" disabled><svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><rect x="2" y="1" width="3.5" height="12" rx="1" fill="currentColor"/><rect x="8.5" y="1" width="3.5" height="12" rx="1" fill="currentColor"/></svg></button>
+  </div>
+  <div class="meter"><span>Периметр</span><div class="track"><div class="fill" id="intFill"></div></div><b id="intText">100%</b></div>
+  <div class="stage" id="stage"><div class="field" id="fieldbox">
+        <canvas id="field" aria-label="Сеть объекта: открывайте клетки и закрывайте найденные угрозы решениями"></canvas>
+  </div></div>
+  <div class="chips" id="chips" aria-label="Инструмент"></div>
+  <div class="hint" id="hint"></div>
+</div>
+<div class="overlay" id="overlay"><div class="ov mid" id="ov"><h2>Puzzle Minesweeper</h2><noscript><p>Игра не запускается: скрипты отключены. Откройте её в Telegram или в обычном браузере.</p></noscript></div></div>
+<div class="sheet-bg" id="sheetbg" hidden></div>
+<div class="sheet" id="sheet" role="dialog" aria-label="Справочник" hidden>
+  <div class="sh-top">
+    <button class="tab" id="tab-sol" type="button" role="tab" aria-selected="true">Решения</button>
+    <button class="tab" id="tab-thr" type="button" role="tab" aria-selected="false">Угрозы</button>
+    <button class="ib sh-x" id="sheetx" type="button" aria-label="Закрыть">×</button>
+  </div>
+  <div class="sh-body" id="sheetbody"></div>
+</div>
+<script>(function(){
+  var MOBILE=true;
+  var C={navy:'#0a1230',ink:'#eef2ff',muted:'#93a0cf',lime:'#AFFB33',orange:'#FF8F0C',blue:'#2176FF',deep:'#13204d',surf:'#101a40',line:'#22306a',boss:'#F472D0',enc:'#5b6690'};
+  var SITE='https://puzzle.systems/';
+  var tg=(window.Telegram&&window.Telegram.WebApp)||null;
+  function $(id){return document.getElementById(id);}
+  var calm=!!(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  var dpr=Math.min(window.devicePixelRatio||1,2);
+
+  // ---------- Telegram ----------
+  function T(fn){try{if(tg)fn(tg);}catch(e){}}
+  function goHome(){location.href='index.html';}
+  if(MOBILE)T(function(t){t.ready();t.expand();if(t.disableVerticalSwipes)t.disableVerticalSwipes();if(t.setHeaderColor)t.setHeaderColor('#0a1230');if(t.setBackgroundColor)t.setBackgroundColor('#0a1230');if(t.setBottomBarColor)t.setBottomBarColor('#0a1230');});
+  function haptic(kind){if(!MOBILE)return;T(function(t){if(!t.HapticFeedback)return;if(kind==='hit')t.HapticFeedback.impactOccurred('heavy');else if(kind==='ok')t.HapticFeedback.notificationOccurred('success');else if(kind==='bad')t.HapticFeedback.notificationOccurred('error');else if(kind==='sel')t.HapticFeedback.selectionChanged();else t.HapticFeedback.impactOccurred('light');});}
+  document.addEventListener('click',function(e){var a=e.target.closest&&e.target.closest('a.site');if(a&&tg&&tg.openLink&&MOBILE){e.preventDefault();try{tg.openLink(SITE);}catch(x){window.open(SITE,'_blank');}}});
+
+  // ---------- data ----------
+  var TH={
+    cred:{name:'Кража учётных данных',col:'#6EE7B7',life:14,dmg:6,pts:10,
+      desc:'Злоумышленник получает логин и пароль сотрудника и использует их для доступа к корпоративным системам.',
+      trait:'Самая частая угроза.',
+      need:'улучшить управление учётными записями и правами доступа',help:'в этом поможет IDM',
+      icon:'M15.5 7.5a3.5 3.5 0 1 1-7 0a3.5 3.5 0 1 1 7 0M12 11v10M12 15.5h3.5M12 18.5h2.5'},
+    sql:{name:'SQL-инъекция',col:'#FF8F0C',life:12,dmg:6,pts:10,
+      desc:'Злоумышленник внедряет вредоносный SQL-код в запрос к веб-приложению, чтобы получить доступ к данным или изменить их.',
+      trait:'Появляется часто, живёт недолго.',
+      need:'улучшить защиту веб-приложений от вредоносных запросов',help:'в этом поможет WAF',
+      icon:'M4 6c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3zM4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3'},
+    brute:{name:'Brute Force (перебор паролей)',col:'#FF4D5E',life:8.5,dmg:5,pts:12,
+      desc:'Злоумышленник многократно пытается подобрать пароль для получения доступа к системе.',
+      trait:'Очень короткий таймер: действуйте быстро.',
+      need:'улучшить мониторинг событий информационной безопасности и выявление подозрительной активности',help:'в этом поможет SIEM',
+      icon:'M6 11h12v9H6zM8 11V8a4 4 0 0 1 8 0v3M9 15.5h.01M12 15.5h.01M15 15.5h.01'},
+    leak:{name:'Утечка данных',col:'#FFD43B',life:18,dmg:12,pts:14,incident:true,
+      desc:'Конфиденциальная информация передаётся посторонним лицам или на внешние ресурсы без разрешения.',
+      trait:'Долгий таймер, но большой урон периметру.',
+      need:'улучшить контроль передачи конфиденциальной информации',help:'в этом поможет DLP',
+      icon:'M12 3c4 5 6.5 8.2 6.5 11.5a6.5 6.5 0 0 1-13 0C5.5 11.2 8 8 12 3z'},
+    ddos:{name:'DDoS-атака',col:'#22D3EE',life:10,dmg:3,pts:5,pack:3,
+      desc:'Злоумышленник направляет на веб-ресурс большое количество запросов, перегружая сервер и делая сайт недоступным для пользователей.',
+      trait:'Появляется сразу по три. Одно решение снимает все DDoS-атаки рядом.',
+      need:'улучшить защиту веб-ресурсов от перегрузки вредоносным трафиком',help:'в этом помогут решения для защиты веб-ресурсов и Anti-DDoS',
+      icon:'M13 2L4 14h7l-1 8 9-12h-7z'},
+    ransom:{name:'Ransomware (атака с использованием шифровальщика)',col:'#D6A36A',life:13,dmg:9,pts:14,
+      desc:'Вредоносная программа шифрует файлы и требует выкуп за их восстановление.',
+      trait:'Если прорвётся, зашифрует два решения в змейке: они станут бесполезными.',
+      need:'улучшить защиту рабочих станций и серверов от вредоносного ПО',help:'в этом поможет EDR',
+      icon:'M7 3h7l4 4v14H7zM14 3v4h4M10 14h5v4h-5zM11 14v-1.5a1.5 1.5 0 0 1 3 0V14'},
+    scan:{name:'Сканирование портов',col:'#93C5FD',life:13,dmg:6,pts:14,
+      desc:'Злоумышленник проверяет сетевые устройства на наличие открытых портов и уязвимых сервисов для поиска точек проникновения.',
+      trait:'Бродит по полю, перескакивая с клетки на клетку.',
+      need:'улучшить контроль сетевого трафика и ограничение несанкционированных соединений',help:'в этом поможет NGFW',
+      icon:'M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18M12 7a5 5 0 1 0 0 10a5 5 0 1 0 0-10M12 12l6-6'},
+    priv:{name:'Злоупотребление привилегиями',col:'#A78BFA',life:14,dmg:10,pts:16,
+      desc:'Злоумышленник использует скомпрометированную учётную запись администратора для изменения настроек или получения доступа к конфиденциальным данным.',
+      trait:'То исчезает, то появляется. Задеть можно и невидимую.',
+      need:'улучшить контроль привилегированного доступа и действий администраторов',help:'в этом поможет PAM',
+      icon:'M4 17l2-9 4 4 2-6 2 6 4-4 2 9zM4 20h16'},
+    lateral:{name:'Боковое перемещение (Lateral Movement)',col:'#F0ABFC',life:14,dmg:8,pts:16,
+      desc:'Получив доступ к одному устройству, злоумышленник пытается проникнуть в другие системы корпоративной сети.',
+      trait:'Каждые три секунды перепрыгивает в другую часть сети.',
+      need:'улучшить мониторинг внутреннего сетевого трафика и выявление аномальной активности',help:'в этом поможет NAD',
+      icon:'M3 12h18M15 6l6 6-6 6M9 6l-6 6 6 6'},
+    container:{name:'Эксплуатация уязвимостей контейнера',col:'#F8FAFC',life:13,dmg:7,pts:14,
+      desc:'Злоумышленник использует уязвимость программного компонента контейнера для выполнения вредоносного кода или получения доступа к инфраструктуре.',
+      trait:'Если прорвётся, на поле появится ещё одна такая же атака.',
+      need:'улучшить контроль безопасности контейнерной инфраструктуры и проверку образов на уязвимости',help:'в этом поможет Container Security',
+      icon:'M3 8l9-5 9 5v8l-9 5-9-5zM3 8l9 5 9-5M12 13v8'},
+    vuln:{name:'Эксплуатация неисправленных уязвимостей',col:'#FCA5A5',life:20,dmg:12,pts:25,
+      desc:'Злоумышленник использует известную, но не закрытую уязвимость в системе, чтобы проникнуть в инфраструктуру.',
+      trait:'Отдельного решения нет: нейтрализуйте любыми двумя решениями из змейки. Закрывается аудитом ИБ.',
+      need:'улучшить процессы выявления уязвимостей и проверки соответствия требованиям информационной безопасности',help:'в этом поможет аудит информационной безопасности',
+      icon:'M12 2l9 5v10l-9 5-9-5V7zM12 8v5M12 16.5v.5'}
+  };
+
+  var SOL={
+    idm:{abbr:'IDM',name:'IDM (Identity Management)',counter:'cred',desc:'Решение для централизованного управления учётными записями сотрудников и правами доступа к корпоративным системам.'},
+    pam:{abbr:'PAM',name:'PAM (Privileged Access Management)',counter:'priv',desc:'Решение для защиты привилегированных учётных записей, контроля действий администраторов и управления административным доступом.'},
+    siem:{abbr:'SIEM',name:'SIEM (Security Information and Event Management)',counter:'brute',desc:'Решение для централизованного сбора и анализа событий информационной безопасности, выявления подозрительной активности и обнаружения инцидентов.'},
+    edr:{abbr:'EDR',name:'EDR (Endpoint Detection and Response)',counter:'ransom',desc:'Решение для мониторинга и защиты рабочих станций и серверов от вредоносной активности с возможностью реагирования на инциденты.'},
+    dlp:{abbr:'DLP',name:'DLP (Data Loss Prevention)',counter:'leak',desc:'Решение для предотвращения утечек конфиденциальной информации и контроля передачи данных за пределы организации.'},
+    waf:{abbr:'WAF',name:'WAF (Web Application Firewall)',counter:'sql',desc:'Решение для защиты веб-приложений от вредоносных запросов и попыток эксплуатации уязвимостей.'},
+    ngfw:{abbr:'NGFW',name:'NGFW (Next-Generation Firewall)',counter:'scan',desc:'Межсетевой экран нового поколения для контроля сетевого трафика, фильтрации соединений и блокировки сетевых угроз.'},
+    nad:{abbr:'NAD',name:'NAD (Network Anomaly Detection)',counter:'lateral',desc:'Решение для анализа сетевого трафика, выявления аномалий и обнаружения подозрительной активности в инфраструктуре.'},
+    cs:{abbr:'CS',name:'Container Security',counter:'container',desc:'Решение для защиты контейнерной инфраструктуры, проверки образов на уязвимости и контроля безопасности контейнеров.'},
+    web:{abbr:'WEB',name:'Защита веб-ресурсов',counter:'ddos',desc:'Комплекс технологий для защиты сайтов и веб-сервисов от вредоносного трафика, эксплуатации уязвимостей и атак на доступность.'}
+  };
+  var SORD=['idm','pam','siem','edr','dlp','waf','ngfw','nad','cs','web'];
+
+  var TORD=['cred','sql','brute','leak','ddos','ransom','scan','priv','lateral','container','vuln'];
+  var SORD=['idm','pam','siem','edr','dlp','waf','ngfw','nad','cs','web'];
+  function applyBL(BL){for(var k in BL)for(var f in BL[k])TH[k][f]=BL[k][f];}
+  function solFor(k){for(var i=0;i<SORD.length;i++)if(SOL[SORD[i]].counter===k)return SORD[i];return null;}
+  function scol(s){return s==='enc'?C.enc:TH[SOL[s].counter].col;}
+  var BOSS_ICON='M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18M12 8a4 4 0 1 0 0 8a4 4 0 1 0 0-8M12 1v5M12 18v5M1 12h5M18 12h5';
+  var paths={};
+  TORD.forEach(function(k){try{paths[k]=new Path2D(TH[k].icon);}catch(e){paths[k]=null;}});
+  try{paths.boss=new Path2D(BOSS_ICON);}catch(e){paths.boss=null;}
+  function iconSVG(k,size){
+    var col=k==='boss'?C.boss:TH[k].col,ic=k==='boss'?BOSS_ICON:TH[k].icon;
+    return '<svg class="ico" width="'+size+'" height="'+size+'" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="12" fill="'+col+'"/><g transform="translate(4.8 4.8) scale(.6)"><path d="'+ic+'" fill="none" stroke="#0a1230" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></g></svg>';
+  }
+  function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');}
+  function short(n){return n.replace(/ \(.*\)$/,'');}
+  function rint(n){return Math.floor(Math.random()*n);}
+  function pick(a){return a[rint(a.length)];}
+  function clamp(v,a,b){return v<a?a:v>b?b:v;}
+  function weighted(list){var s=0,i;for(i=0;i<list.length;i++)s+=list[i][1];var r=Math.random()*s;for(i=0;i<list.length;i++){r-=list[i][1];if(r<=0)return list[i][0];}return list[0][0];}
+  function plural(n,f1,f2,f5){var m=n%100,d=n%10;if(m>10&&m<20)return f5;if(d===1)return f1;if(d>=2&&d<=4)return f2;return f5;}
+  function shuffleArr(a){for(var i=a.length-1;i>0;i--){var j=rint(i+1),t=a[i];a[i]=a[j];a[j]=t;}return a;}
+
+  // ---------- shared state ----------
+  var state='menu',wave=1,score=0,best=0,integrity=100,stats=null,last=0,silentPause=false,result='',clock=0;
+  var floats=[],bursts=[],banner=null,flash=0,shake=0;
+  var cv=$('field'),ctx=cv&&cv.getContext?cv.getContext('2d'):null;
+  function rr(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+  function drawIcon(k,x,y,size,col){var p=paths[k];if(!p)return;ctx.save();ctx.translate(x-size/2,y-size/2);ctx.scale(size/24,size/24);ctx.strokeStyle=col;ctx.lineWidth=2.4;ctx.lineCap='round';ctx.lineJoin='round';ctx.stroke(p);ctx.restore();}
+  function float(x,y,txt,col,big){floats.push({x:x,y:y,txt:txt,col:col,life:big?1.6:1.1,big:!!big});}
+  function burst(x,y,col,n){if(calm)n=Math.ceil(n/3);for(var i=0;i<n;i++){var a=Math.random()*6.2832,s=40+Math.random()*130;bursts.push({x:x,y:y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:.55,col:col});}}
+  function wrapText(text,maxW){var w=String(text).split(' '),out=[],line='';for(var i=0;i<w.length;i++){var t=line?line+' '+w[i]:w[i];if(ctx.measureText(t).width>maxW&&line){out.push(line);line=w[i];}else line=t;}if(line)out.push(line);return out;}
+  function newThreatBanner(k){
+    var s=solFor(k);
+    banner={title:'Новая угроза',text:short(TH[k].name)+'. '+TH[k].trait,hint:s?'Её закрывает '+SOL[s].abbr:'Два разных решения',col:TH[k].col,k:k,life:4.5};
+    if(!ctx)toast(banner);
+  }
+  // DOM games show banners as a toast inside the field
+  var toastT=null;
+  function toast(b){
+    var el=$('toast');if(!el)return;
+    el.style.setProperty('--pc',b.col||C.lime);
+    el.innerHTML=(b.k?iconSVG(b.k,30):'')+'<span><b>'+esc(b.title)+'</b>'+esc(b.text)+(b.hint?'<i>'+esc(b.hint)+'</i>':'')+'</span>';
+    el.hidden=false;clearTimeout(toastT);toastT=setTimeout(function(){el.hidden=true;},(b.life||3.5)*1000);
+  }
+  // integrity loss; k = threat key (counted as missed) or null
+  function breach(k,dmg,x,y){
+    if(k==='boss')stats.bossLeak=true;else if(k)stats.miss[k]=(stats.miss[k]||0)+1;
+    integrity-=dmg;flash=.45;shake=calm?0:7;haptic('hit');
+    if(!ctx){var fbx=$('fieldbox');if(fbx){fbx.classList.remove('hurt');void fbx.offsetWidth;fbx.classList.add('hurt');}}
+    if(x!=null)float(x,y,'−'+dmg+'%',C.orange,false);
+    if(integrity<=0){integrity=0;finish(false,'Периметр прорван');return true;}
+    return false;
+  }
+  function neutral(k,pts,x,y){
+    stats.neutral++;score+=pts;haptic('light');
+    if(x!=null){float(x,y,'+'+pts,k&&TH[k]?TH[k].col:C.lime);burst(x,y,k&&TH[k]?TH[k].col:C.lime,12);}
+  }
+  function drawFx(W,H){
+    var i;
+    ctx.textAlign='center';ctx.textBaseline='alphabetic';
+    for(i=0;i<bursts.length;i++){var q=bursts[i];ctx.globalAlpha=Math.max(0,q.life/.55);ctx.fillStyle=q.col;ctx.fillRect(q.x-3,q.y-3,6,6);}
+    ctx.globalAlpha=1;
+    for(i=0;i<floats.length;i++){var f=floats[i];ctx.globalAlpha=Math.min(1,f.life*2);ctx.fillStyle=f.col;ctx.font=f.big?'700 20px Unbounded,Manrope,sans-serif':'700 14px Manrope,sans-serif';ctx.fillText(f.txt,clamp(f.x,90,W-90),f.y);}
+    ctx.globalAlpha=1;
+    if(flash>0){ctx.strokeStyle='rgba(255,143,12,'+flash+')';ctx.lineWidth=8;ctx.strokeRect(0,0,W,H);}
+    if(banner){
+      var bx=14,bw=W-28,bc=banner.col||C.lime;
+      ctx.font='600 15px Manrope,sans-serif';
+      var lines=wrapText(banner.text,bw-84),bh=68+lines.length*20+(banner.hint?20:0),by=Math.min(H*.24,H-bh-10);
+      ctx.globalAlpha=Math.min(1,banner.life*1.5);
+      ctx.fillStyle='rgba(10,18,48,.96)';rr(bx,by,bw,bh,12);ctx.fill();
+      ctx.strokeStyle=bc;ctx.lineWidth=2;rr(bx,by,bw,bh,12);ctx.stroke();
+      ctx.fillStyle=bc;ctx.beginPath();ctx.arc(bx+36,by+38,20,0,6.2832);ctx.fill();
+      if(banner.k)drawIcon(banner.k,bx+36,by+38,24,C.navy);
+      ctx.textAlign='left';ctx.fillStyle=bc;ctx.font='700 16px Unbounded,Manrope,sans-serif';ctx.fillText(banner.title,bx+68,by+32,bw-80);
+      ctx.fillStyle=C.ink;ctx.font='600 15px Manrope,sans-serif';
+      for(i=0;i<lines.length;i++)ctx.fillText(lines[i],bx+68,by+56+i*20);
+      if(banner.hint){ctx.fillStyle=C.lime;ctx.font='700 15px Manrope,sans-serif';ctx.fillText(banner.hint,bx+68,by+60+lines.length*20,bw-80);}
+      ctx.globalAlpha=1;
+    }
+  }
+  function fxUpdate(dt){
+    clock+=dt;flash=Math.max(0,flash-dt);shake=Math.max(0,shake-24*dt);
+    var i;
+    for(i=floats.length-1;i>=0;i--){floats[i].life-=dt;floats[i].y-=26*dt;if(floats[i].life<=0)floats.splice(i,1);}
+    for(i=bursts.length-1;i>=0;i--){var b=bursts[i];b.life-=dt;b.x+=b.vx*dt;b.y+=b.vy*dt;b.vx*=.93;b.vy*=.93;if(b.life<=0)bursts.splice(i,1);}
+    if(state==='play'&&banner){banner.life-=dt;if(banner.life<=0)banner=null;}
+  }
+
+  // ================= Puzzle Minesweeper =================
+  var GAME={id:'minesweeper',title:'Puzzle Minesweeper',key:'pmines-best',waves:6,waveLabel:'Объект',unitShort:'го объекта',W:480,H:480,aspect:1,
+    reportLabel:'Отчёт смены',winTitle:'Все объекты очищены',neutralLabel:'Обезврежено угроз',starsNote:'обезврежено от 75% угроз',
+    unlock:{cred:1,sql:1,brute:2,leak:2,ddos:3,ransom:3,scan:4,priv:4,lateral:5,container:5,vuln:6},
+    bossText:'на последнем объекте среди клеток спрятана целевая атака. Примените к ней любое решение — она раскроется и покажет четыре нужных решения. Открыть её — значит пропустить.',
+    vulnClose:'два разных решения · аудит ИБ',activeWord:'найдено'};
+  applyBL({
+    cred:{dmg:6,pts:30,trait:'Обычная скрытая угроза.'},
+    sql:{dmg:6,pts:30,trait:'Встречается чаще других.'},
+    brute:{dmg:6,pts:35,trait:'Если применить к ней неверное решение, она сразу срабатывает.'},
+    leak:{dmg:12,pts:40,incident:true,trait:'При срабатывании — большой урон периметру.'},
+    ddos:{dmg:4,pts:15,pack:3,trait:'Лежит группой из трёх соседних клеток. Одно решение «Защита веб-ресурсов» закрывает всю группу.'},
+    ransom:{dmg:8,pts:40,trait:'При срабатывании шифрует соседние открытые клетки: их подсказки пропадают.'},
+    scan:{dmg:6,pts:40,trait:'Каждые 20 секунд переползает на соседнюю закрытую клетку — подсказки меняются.'},
+    priv:{dmg:9,pts:45,trait:'Не оставляет цветной метки в подсказках соседей: её видно только по цифре.'},
+    lateral:{dmg:8,pts:45,trait:'Каждые 25 секунд перемещается в другую закрытую клетку сети.'},
+    container:{dmg:8,pts:40,trait:'При срабатывании в соседней закрытой клетке появляется ещё одна такая же.'},
+    vuln:{dmg:12,pts:60,trait:'Отдельного решения нет: закрывается, если применить к ней два разных решения. Закрывается аудитом ИБ.'}
+  });
+  var OBJ=[
+    {name:'Офис',n:8,thr:6,time:120},
+    {name:'Интернет-магазин',n:8,thr:8,time:130},
+    {name:'Банк',n:8,thr:10,time:140},
+    {name:'Завод',n:9,thr:12,time:160},
+    {name:'Центр обработки данных',n:9,thr:13,time:170},
+    {name:'Холдинг',n:9,thr:14,time:190}
+  ];
+  var W=480,TOP=40,N=8,CS=55,OX=20,cells=[],tool='open',timeLeft=0,placed=false,roundDone=false,doneT=0,aStats=null,moveT=0,boss=null;
+  function obj(){return OBJ[Math.min(wave,6)-1];}
+
+  function gameMenu(){
+    return '<p>Вы — специалист по безопасности. На каждом объекте под клетками сети спрятаны <b>угрозы</b>. Откройте клетку: если она чистая, цифра покажет, сколько угроз рядом, а цветные метки — какого они типа.</p>'+
+      '<p>Нашли угрозу — выберите <b>решение её цвета</b> и примените к клетке. Открыть клетку с угрозой — значит пропустить атаку. Неверное или лишнее решение тоже стоит периметру.</p>'+
+      '<p>У каждого объекта есть время на поиск: необезвреженные к концу угрозы прорвутся. Пройдите <b>6 объектов</b> — от офиса до холдинга.</p>';
+  }
+  function gameSolUse(s){return 'Применённое к клетке закрывает';}
+  function gameActive(k){var n=0;cells.forEach(function(c){if(c.k===k&&c.found&&!c.res)n++;});return n;}
+  function gameReport(){return '<dt>Открыто клеток</dt><dd>'+aStats.opened+'</dd><dt>Неверных решений</dt><dd>'+aStats.wrong+'</dd><dt>Лишних решений</dt><dd>'+aStats.waste+'</dd>';}
+  function gameDebug(){return{left:Math.round(timeLeft),tool:tool,open:cells.filter(function(c){return c.open;}).length,threats:cells.filter(function(c){return c.k&&!c.res;}).length};}
+  function gameHud(set){set('time',state!=='menu'?fmt(timeLeft):'—');}
+  function fmt(t){t=Math.max(0,Math.ceil(t));return Math.floor(t/60)+':'+('0'+t%60).slice(-2);}
+
+  function gameStart(){aStats={opened:0,wrong:0,waste:0};setupRound(1);}
+  function setupRound(n){
+    wave=n;var o=obj();N=o.n;CS=Math.floor((W-2*OX)/N);timeLeft=o.time;placed=false;roundDone=false;doneT=0;moveT=0;boss=null;
+    cells=[];for(var r=0;r<N;r++)for(var c=0;c<N;c++)cells.push({c:c,r:r,k:null,open:false,res:null,found:false,hits:{},enc:false,boss:false});
+    tool='open';
+    var nk=TORD.filter(function(k){return GAME.unlock[k]===n;});
+    banner={title:'Объект '+n+' · '+o.name,text:(n===1?'Откройте первую клетку — она всегда чистая. Найдено '+o.thr+' скрытых угроз, на поиск '+fmt(o.time)+'.':'Скрытых угроз: '+o.thr+'. Время на поиск: '+fmt(o.time)+'.')+(nk.length?' Новые угрозы: '+nk.map(function(k){return short(TH[k].name);}).join(', ')+'.':''),col:n===6?C.boss:C.lime,k:nk[0]||(n===6?'boss':'cred'),life:5};
+    renderChips();
+  }
+  function at(c,r){return c<0||r<0||c>=N||r>=N?null:cells[r*N+c];}
+  function nbrs(cl){var a=[];for(var dy=-1;dy<=1;dy++)for(var dx=-1;dx<=1;dx++){if(!dx&&!dy)continue;var q=at(cl.c+dx,cl.r+dy);if(q)a.push(q);}return a;}
+  function place(first){
+    var o=obj(),types=unlockedT(),l=[];
+    types.forEach(function(k){l.push([k,GAME.unlock[k]===wave?2.5:(k==='sql'?1.6:1)]);});
+    var banned={};banned[first.r*N+first.c]=1;nbrs(first).forEach(function(q){banned[q.r*N+q.c]=1;});
+    function free(){return cells.filter(function(q){return !q.k&&!q.boss&&!banned[q.r*N+q.c];});}
+    var cnt=0,guard=0;
+    if(wave===6){var f0=pick(free());f0.boss=true;}
+    while(cnt<o.thr&&guard++<500){
+      var k=weighted(l),f=free();if(!f.length)break;var cl=pick(f);
+      if(k==='ddos'){var grp=[cl],nb=nbrs(cl).filter(function(q){return !q.k&&!q.boss&&!banned[q.r*N+q.c]&&(q.c===cl.c||q.r===cl.r);});if(nb.length<2||cnt+3>o.thr)continue;grp.push(nb[0]);grp.push(nb[1]);grp.forEach(function(q){q.k='ddos';q.grp=cl;});cnt+=3;stats.spawned+=3;continue;}
+      cl.k=k;cnt++;stats.spawned++;
+    }
+    if(wave===6)stats.spawned++;
+    placed=true;
+  }
+  function info(cl){var n=0,types={};nbrs(cl).forEach(function(q){if((q.k||q.boss)&&!q.res){n++;if(q.boss)types.boss=1;else if(q.k!=='priv')types[q.k]=1;}});return{n:n,types:Object.keys(types)};}
+
+  function openCell(cl,chain){
+    if(cl.open||cl.res)return;
+    if(!placed)place(cl);
+    if(cl.boss){incidentBoss(cl);return;}
+    if(cl.k){incident(cl);return;}
+    cl.open=true;aStats.opened++;cl.enc=false;
+    if(!chain)haptic('light');
+    if(info(cl).n===0)nbrs(cl).forEach(function(q){if(!q.open&&!q.k&&!q.boss&&!q.res)openCell(q,true);});
+  }
+  function cxy(cl){return{x:OX+cl.c*CS+CS/2,y:TOP+cl.r*CS+CS/2};}
+  function incident(cl){
+    var k=cl.k,p=cxy(cl);cl.res='hit';cl.found=true;
+    float(p.x,p.y-20,short(TH[k].name),TH[k].col);
+    if(k==='ddos'){cells.forEach(function(q){if(q!==cl&&q.k==='ddos'&&q.grp===cl.grp&&!q.res){q.res='hit';q.found=true;stats.miss.ddos=(stats.miss.ddos||0)+1;}});}
+    if(breach(k,TH[k].dmg,p.x,p.y))return;
+    if(k==='ransom'){nbrs(cl).forEach(function(q){if(q.open)q.enc=true;});float(p.x,p.y+20,'подсказки зашифрованы',C.orange);}
+    if(k==='container'){var f=nbrs(cl).filter(function(q){return !q.open&&!q.k&&!q.res&&!q.boss;});if(f.length){pick(f).k='container';stats.spawned++;}}
+    checkDone();
+  }
+  function incidentBoss(cl){var p=cxy(cl);cl.res='hit';cl.found=true;float(p.x,p.y-20,'Целевая атака',C.boss,true);if(breach('boss',25,p.x,p.y))return;checkDone();}
+  function apply(cl,s){
+    if(cl.open||cl.res)return;
+    if(!placed){openCell(cl);return;}
+    var p=cxy(cl);
+    if(cl.boss){
+      if(!boss){boss={cell:cl,need:shuffleArr(unlockedS().slice()).slice(0,4),i:0};cl.found=true;banner={title:'Целевая атака обнаружена',text:'Примените к ней по очереди решения, написанные на клетке.',col:C.boss,k:'boss',life:4};haptic('bad');return;}
+      if(s===boss.need[boss.i]){boss.i++;score+=60;float(p.x,p.y,'+60',C.boss);haptic('hit');if(boss.i>=4){cl.res='ok';stats.neutral++;score+=200;float(W/2,W*.45,'Целевая атака отражена · +200',C.lime,true);haptic('ok');checkDone();}}
+      else{aStats.wrong++;float(p.x,p.y,'нужно '+SOL[boss.need[boss.i]].abbr,C.boss);breach(null,3,p.x,p.y+16);}
+      return;
+    }
+    if(!cl.k){aStats.waste++;float(p.x,p.y-12,'угрозы нет',C.muted);if(breach(null,2,p.x,p.y+8))return;openCell(cl);return;}
+    var k=cl.k;
+    if(k==='vuln'){
+      if(cl.hits[s]){float(p.x,p.y,'нужно другое решение',C.muted);return;}
+      cl.hits[s]=1;cl.found=true;
+      if(Object.keys(cl.hits).length>=2){cl.res='ok';neutral('vuln',TH.vuln.pts,p.x,p.y);checkDone();}
+      else float(p.x,p.y,'уязвимость: ещё одно решение',TH.vuln.col);
+      return;
+    }
+    if(solFor(k)===s){
+      cl.res='ok';cl.found=true;neutral(k,TH[k].pts,p.x,p.y);
+      if(k==='ddos')cells.forEach(function(q){if(q!==cl&&q.k==='ddos'&&q.grp===cl.grp&&!q.res){q.res='ok';q.found=true;stats.neutral++;score+=TH.ddos.pts;}});
+      checkDone();return;
+    }
+    aStats.wrong++;cl.found=true;
+    if(k==='brute'){float(p.x,p.y-24,'Неверное решение',C.orange);incident(cl);return;}
+    float(p.x,p.y-12,'не то решение',C.orange);breach(null,3,p.x,p.y+8);
+  }
+  function checkDone(){
+    if(state!=='play'||!placed)return;
+    var left=cells.some(function(q){return (q.k||q.boss)&&!q.res;});
+    if(!left&&!roundDone){roundDone=true;doneT=0;var bonus=Math.round(timeLeft)*2;score+=bonus;banner={title:'Объект очищен',text:obj().name+': все угрозы найдены. Бонус за время: +'+bonus+'.',col:C.lime,k:'cred',life:2.4};haptic('ok');}
+  }
+  function timeout(){
+    var list=cells.filter(function(q){return (q.k||q.boss)&&!q.res;});
+    banner={title:'Время вышло',text:'Незакрытые угрозы прорвались: '+list.length+'.',col:C.orange,k:null,life:2.6};
+    for(var i=0;i<list.length;i++){var q=list[i];q.res='hit';q.found=true;var p=cxy(q);
+      if(q.boss){if(breach('boss',25,p.x,p.y))return;}else if(breach(q.k,Math.round(TH[q.k].dmg*.7),p.x,p.y))return;}
+    roundDone=true;doneT=0;
+  }
+
+  function gameUpdate(dt){
+    if(roundDone){doneT+=dt;if(doneT>2.4){if(wave>=6){finish(true);return;}setupRound(wave+1);}return;}
+    if(!placed)return;
+    timeLeft-=dt;
+    if(timeLeft<=0){timeLeft=0;timeout();return;}
+    moveT+=dt;
+    if(Math.floor(moveT/20)!==Math.floor((moveT-dt)/20))mover('scan',function(cl){return nbrs(cl);});
+    if(Math.floor(moveT/25)!==Math.floor((moveT-dt)/25))mover('lateral',function(){return cells;});
+  }
+  function mover(k,where){
+    cells.filter(function(q){return q.k===k&&!q.res&&!q.found;}).forEach(function(cl){
+      var f=where(cl).filter(function(q){return !q.open&&!q.k&&!q.res&&!q.boss;});if(!f.length)return;
+      var t=pick(f);t.k=k;cl.k=null;
+    });
+  }
+
+  // ---------- draw ----------
+  function gameDraw(){
+    ctx.fillStyle=C.navy;ctx.fillRect(0,0,W,W);
+    ctx.save();if(shake>0)ctx.translate((Math.random()-.5)*shake,(Math.random()-.5)*shake);
+    ctx.textAlign='left';ctx.textBaseline='middle';
+    if(state!=='menu'){
+      var o=obj();ctx.fillStyle=C.ink;ctx.font='700 14px Manrope,sans-serif';ctx.fillText('Объект '+wave+': '+o.name,OX,20);
+      var left=cells.filter(function(q){return (q.k||q.boss)&&!q.res;}).length;
+      ctx.textAlign='right';ctx.fillStyle=timeLeft<20&&placed?C.orange:C.muted;ctx.font='600 13px Manrope,sans-serif';
+      ctx.fillText((placed?'угроз осталось: '+left+' · ':'')+fmt(timeLeft),W-OX,20);
+    }
+    for(var i=0;i<cells.length;i++)drawCell(cells[i]);
+    if(state==='menu')for(var r=0;r<8;r++)for(var c=0;c<8;c++){ctx.fillStyle='rgba(34,48,106,.7)';rr(OX+c*55+2,TOP+r*55+2,51,51,8);ctx.fill();}
+    ctx.restore();
+    drawFx(W,W);
+  }
+  function drawCell(cl){
+    var x=OX+cl.c*CS+2,y=TOP+cl.r*CS+2,s=CS-4,cx=x+s/2,cy=y+s/2;
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    if(cl.res){
+      var col=cl.boss?C.boss:TH[cl.k].col;
+      if(cl.res==='ok'){ctx.fillStyle=C.surf;rr(x,y,s,s,8);ctx.fill();ctx.strokeStyle=col;ctx.lineWidth=2;rr(x+1,y+1,s-2,s-2,8);ctx.stroke();drawIcon(cl.boss?'boss':cl.k,cx,cy-5,s*.42,col);ctx.fillStyle=C.lime;ctx.font='800 '+Math.round(s*.24)+'px Manrope,sans-serif';ctx.fillText('✓',cx,y+s-9);}
+      else{ctx.fillStyle=col;ctx.globalAlpha=.85;rr(x,y,s,s,8);ctx.fill();ctx.globalAlpha=1;drawIcon(cl.boss?'boss':cl.k,cx,cy,s*.5,C.navy);ctx.strokeStyle=C.orange;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(x+6,y+6);ctx.lineTo(x+s-6,y+s-6);ctx.stroke();}
+      return;
+    }
+    if(cl.open){
+      ctx.fillStyle='rgba(16,26,64,1)';rr(x,y,s,s,8);ctx.fill();
+      if(cl.enc){drawIcon('ransom',cx,cy,s*.42,C.enc);return;}
+      var inf=info(cl);if(!inf.n)return;
+      ctx.fillStyle=C.ink;ctx.font='800 '+Math.round(s*.4)+'px Manrope,sans-serif';ctx.fillText(String(inf.n),cx,cy-(inf.types.length?5:0));
+      var dw=Math.min(9,s/5),tot=inf.types.length*dw+(inf.types.length-1)*3,sx=cx-tot/2+dw/2;
+      inf.types.forEach(function(k,i){ctx.fillStyle=k==='boss'?C.boss:TH[k].col;ctx.beginPath();ctx.arc(sx+i*(dw+3),y+s-9,dw/2,0,6.2832);ctx.fill();});
+      return;
+    }
+    // closed
+    ctx.fillStyle=cl.found?'#2a3a80':'#1c2a66';rr(x,y,s,s,8);ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,.05)';rr(x,y,s,s/2,8);ctx.fill();
+    if(cl.found&&cl.k==='vuln'){ctx.fillStyle=TH.vuln.col;ctx.font='800 '+Math.round(s*.24)+'px Manrope,sans-serif';ctx.fillText(Object.keys(cl.hits).length+'/2',cx,cy);}
+    else if(cl.found&&cl.k){ctx.fillStyle=TH[cl.k].col;ctx.font='800 '+Math.round(s*.36)+'px Manrope,sans-serif';ctx.fillText('!',cx,cy);}
+    if(cl.boss&&boss){ctx.fillStyle=C.boss;rr(x,y,s,s,8);ctx.fill();ctx.fillStyle=scol(boss.need[boss.i]);rr(x+3,y+s-18,s-6,15,4);ctx.fill();drawIcon('boss',cx,cy-7,s*.36,C.navy);ctx.fillStyle=C.navy;ctx.font='800 9px Manrope,sans-serif';ctx.fillText(SOL[boss.need[boss.i]].abbr+' '+(boss.i+1)+'/4',cx,y+s-10,s-8);}
+  }
+
+  // ---------- chips & input ----------
+  function renderChips(){
+    var el=$('chips');if(!el)return;
+    var h='';
+    if(state!=='menu'){
+      h='<button type="button" class="chip open'+(tool==='open'?' on':'')+'" data-s="open" aria-pressed="'+(tool==='open')+'">'+(MOBILE?'':'<i>Q</i>')+'Открыть</button>';
+      unlockedS().forEach(function(s){var i=SORD.indexOf(s);h+='<button type="button" class="chip'+(tool===s?' on':'')+'" data-s="'+s+'" style="--pc:'+scol(s)+'" aria-pressed="'+(tool===s)+'">'+(MOBILE?'':'<i>'+((i+1)%10)+'</i>')+SOL[s].abbr+'</button>';});
+    }
+    if(el._h!==h){el.innerHTML=h;el._h=h;}
+  }
+  function choose(s){if(s!=='open'&&fromWave(SOL[s].counter)>wave)return;tool=s;haptic('sel');renderChips();}
+  var chipsEl=$('chips');
+  if(chipsEl)chipsEl.addEventListener('click',function(e){var b=e.target.closest('.chip');if(b&&state==='play')choose(b.getAttribute('data-s'));});
+  function act(cl){if(!cl||roundDone)return;if(tool==='open')openCell(cl);else apply(cl,tool);}
+  cv.addEventListener('pointerdown',function(e){
+    if(state!=='play')return;
+    var r=cv.getBoundingClientRect(),x=(e.clientX-r.left)/r.width*W,y=(e.clientY-r.top)/r.height*W;
+    var c=Math.floor((x-OX)/CS),rr2=Math.floor((y-TOP)/CS);act(at(c,rr2));
+  });
+  function gameKey(e){var k=e.key;if(k==='q'||k==='Q'||k==='й'||k==='Й'){choose('open');return;}if(/^[0-9]$/.test(k)){var i=k==='0'?9:+k-1;choose(SORD[i]);}}
+  function gameHint(){
+    renderChips();
+    if(!placed)return 'Откройте любую клетку: первая всегда чистая.';
+    if(boss&&!boss.cell.res)return '<b style="color:'+C.boss+'">Целевая атака</b>: примените к ней <b>'+SOL[boss.need[boss.i]].abbr+'</b> · этап '+(boss.i+1)+' из 4';
+    var t=tool==='open'?'<b>Открыть</b>':'решение <b style="color:'+scol(tool)+'">'+SOL[tool].abbr+'</b>';
+    return 'Инструмент: '+t+'. Цифра — сколько угроз рядом, метки — их цвет. Время: '+fmt(timeLeft)+'.';
+  }
+  function gameMenuEnter(){cells=[];renderChips();}
+  var gameApi={boss:function(){return boss;},cells:function(){return cells;},act:act,choose:choose,N:function(){return N;}};
+
+  // ================= shared shell: panels, menus, report =================
+  function fromWave(k){return GAME.unlock?(GAME.unlock[k]||99):TORD.indexOf(k)+1;}
+  function unlockedT(){return TORD.filter(function(k){return fromWave(k)<=wave;});}
+  function unlockedS(){return SORD.filter(function(s){return fromWave(SOL[s].counter)<=wave;});}
+  function lockLabel(n){return 'с '+n+'-'+(GAME.unitShort||'й волны');}
+
+  function solCard(s){
+    var d=SOL[s],t=TH[d.counter],locked=state!=='menu'&&fromWave(d.counter)>wave;
+    return '<div class="card'+(locked?' off':'')+'" style="--pc:'+t.col+'"><span class="sq">'+d.abbr+'</span><span class="body">'+
+      '<span class="hd"><span class="nm">'+esc(d.name)+'</span>'+(locked?'<span class="badge">'+lockLabel(fromWave(d.counter))+'</span>':'')+'</span>'+
+      '<span class="ds">'+esc(d.desc)+'</span>'+
+      '<span class="vs">'+esc(gameSolUse(s))+': '+iconSVG(d.counter,16)+'<b>'+esc(short(t.name))+'</b></span></span></div>';
+  }
+  function thrCard(k){
+    var t=TH[k],s=solFor(k),locked=state!=='menu'&&fromWave(k)>wave,isNew=state!=='menu'&&fromWave(k)===wave&&wave>1;
+    var active=typeof gameActive==='function'&&state!=='menu'?gameActive(k):0;
+    return '<div class="card'+(locked?' off':'')+'" style="--pc:'+t.col+'">'+iconSVG(k,26)+'<span class="body">'+
+      '<span class="hd"><span class="nm">'+esc(t.name)+'</span>'+(locked?'<span class="badge">'+lockLabel(fromWave(k))+'</span>':(isNew?'<span class="badge new">новая</span>':(active?'<span class="badge">'+(GAME.activeWord||'на поле')+' ×'+active+'</span>':'')))+'</span>'+
+      '<span class="ds">'+esc(t.desc)+'</span><span class="gm">В игре: '+esc(t.trait)+'</span>'+
+      '<span class="vs">Закрывает: <b style="color:'+t.col+'">'+(s?SOL[s].abbr:esc(GAME.vulnClose||'два разных решения · аудит ИБ'))+'</b></span></span></div>';
+  }
+  function bossCard(){
+    if(!GAME.bossText)return '';
+    return '<div class="card'+(state!=='menu'&&wave<GAME.waves?' off':'')+'" style="--pc:'+C.boss+'">'+iconSVG('boss',26)+'<span class="body"><span class="hd"><span class="nm">Целевая атака</span><span class="badge">финал</span></span>'+
+      '<span class="gm">В игре: '+esc(GAME.bossText)+'</span></span></div>';
+  }
+  function renderPanels(){
+    var sl=$('sollist'),tl=$('thrlist');
+    if(sl){var h=SORD.map(solCard).join('');if(sl._h!==h){sl.innerHTML=h;sl._h=h;}}
+    if(tl){var h2=TORD.map(thrCard).join('')+bossCard();if(tl._h!==h2){tl.innerHTML=h2;tl._h=h2;}}
+    var hint=$('hint');
+    if(hint){var hh=(state==='play'||state==='pause')?gameHint():'';if(hint._h!==hh){hint.innerHTML=hh;hint._h=hh;}}
+  }
+
+  // ---------- reference sheet (mobile) ----------
+  var sheetTab='sol',sheetOpen=false;
+  function openSheet(tab){
+    if(!$('sheet'))return;
+    sheetTab=tab||'sol';sheetOpen=true;
+    if(state==='play')pauseGame(true);
+    renderSheet();$('sheet').hidden=false;$('sheetbg').hidden=false;syncBack();
+  }
+  function closeSheet(){sheetOpen=false;$('sheet').hidden=true;$('sheetbg').hidden=true;if(state==='pause'&&silentPause)resumeGame();syncBack();}
+  function renderSheet(){
+    $('tab-sol').setAttribute('aria-selected',sheetTab==='sol'?'true':'false');
+    $('tab-thr').setAttribute('aria-selected',sheetTab==='thr'?'true':'false');
+    var b=$('sheetbody');b.innerHTML=sheetTab==='sol'?SORD.map(solCard).join(''):TORD.map(thrCard).join('')+bossCard();b.scrollTop=0;
+  }
+  if($('sheet')){
+    $('helpbtn').addEventListener('click',function(){openSheet('sol');});
+    $('tab-sol').addEventListener('click',function(){sheetTab='sol';renderSheet();});
+    $('tab-thr').addEventListener('click',function(){sheetTab='thr';renderSheet();});
+    $('sheetx').addEventListener('click',closeSheet);
+    $('sheetbg').addEventListener('click',closeSheet);
+  }
+
+  // ---------- overlays ----------
+  function showOverlay(html,mid){var ov=$('ov');ov.className='ov'+(mid?' mid':'');ov.innerHTML=html;$('overlay').hidden=false;$('overlay').scrollTop=0;}
+  function hideOverlay(){$('overlay').hidden=true;}
+  function showMenu(){
+    state='menu';silentPause=false;
+    var pb=$('pausebtn');if(pb){pb.disabled=true;pb.setAttribute('aria-pressed','false');}
+    T(function(t){if(t.disableClosingConfirmation)t.disableClosingConfirmation();});
+    if(typeof gameMenuEnter==='function')gameMenuEnter();
+    var lg=MOBILE?document.querySelector('.top .logo'):null;
+    var h=(lg?lg.outerHTML:'')+'<h2>'+esc(GAME.title)+'</h2>'+gameMenu()+
+      (best?'<p>Рекорд: <b>'+best+'</b></p>':'')+
+      '<div class="acts"><button class="btn" id="go" type="button">Начать игру</button>'+(MOBILE?'<button class="btn ghost" id="menuhelp" type="button">Справочник решений и угроз</button>':'')+'<button class="btn ghost" id="allgames" type="button">← Все игры</button></div>';
+    showOverlay(h,true);
+    $('go').addEventListener('click',start);
+    $('allgames').addEventListener('click',goHome);
+    if($('menuhelp'))$('menuhelp').addEventListener('click',function(){openSheet('sol');});
+    renderPanels();syncBack();
+  }
+  function start(){
+    wave=1;integrity=100;score=0;floats=[];bursts=[];banner=null;flash=0;shake=0;silentPause=false;result='';
+    stats={spawned:0,neutral:0,miss:{},bossLeak:false};
+    state='play';hideOverlay();
+    var pb=$('pausebtn');if(pb){pb.disabled=false;pb.setAttribute('aria-pressed','false');}
+    T(function(t){if(t.enableClosingConfirmation)t.enableClosingConfirmation();});
+    gameStart();
+    last=performance.now();syncBack();renderPanels();
+  }
+  function pauseGame(silent){
+    if(state!=='play')return;
+    state='pause';silentPause=!!silent;
+    var pb=$('pausebtn');if(pb)pb.setAttribute('aria-pressed','true');
+    if(typeof gamePause==='function')gamePause();
+    if(!silent){
+      showOverlay('<span class="lbl">Пауза</span><h2>Игра на паузе</h2><p>'+esc(GAME.waveLabel)+' '+wave+' из '+GAME.waves+'. Периметр '+Math.round(integrity)+'%, счёт '+score+'.</p>'+
+        '<div class="acts"><button class="btn" type="button" id="resume">Продолжить</button><button class="btn ghost" type="button" id="restart">Начать заново</button><button class="btn ghost" type="button" id="tomenu">Главное меню</button></div>'+
+        (MOBILE?'':'<p class="small">P или Esc — продолжить.</p>'),true);
+      $('resume').addEventListener('click',resumeGame);$('restart').addEventListener('click',start);$('tomenu').addEventListener('click',showMenu);
+    }
+    syncBack();
+  }
+  function resumeGame(){
+    if(state!=='pause')return;
+    state='play';silentPause=false;hideOverlay();
+    var pb=$('pausebtn');if(pb)pb.setAttribute('aria-pressed','false');
+    if(typeof gameResume==='function')gameResume();
+    last=performance.now();syncBack();
+  }
+  function recsHTML(){
+    var tail='<span class="pz">Компания Puzzle Systems подберёт нужный Вам продукт в соответствии с рекомендацией. Напишите нам: <a class="site" href="'+SITE+'" target="_blank" rel="noopener">puzzle.systems</a></span>';
+    var ks=Object.keys(stats.miss).sort(function(a,b){return stats.miss[b]-stats.miss[a];});
+    var h='<span class="lbl">'+(ks.length||stats.bossLeak?'Рекомендации по пропущенным атакам':'Рекомендации')+'</span><div class="recs">';
+    ks.forEach(function(k){
+      var t=TH[k],n=stats.miss[k],many=n>=(t.pack?6:3),txt;
+      if(t.incident)txt=many?'Вы допустили большое количество инцидентов «'+t.name+'»':'Вы допустили '+n+' '+plural(n,'инцидент','инцидента','инцидентов')+' «'+t.name+'»';
+      else txt=many?'Вы пропустили большое количество атак «'+t.name+'»':'Вы пропустили '+n+' '+plural(n,'атаку','атаки','атак')+' «'+t.name+'»';
+      h+='<div class="rec" style="--pc:'+t.col+'"><b>'+esc(txt)+'</b>, вам необходимо '+esc(t.need)+', '+esc(t.help)+'.'+tail+'</div>';
+    });
+    if(stats.bossLeak)h+='<div class="rec" style="--pc:'+C.boss+'"><b>Целевая атака прорвалась к периметру.</b> Против целевых атак нужна комплексная защита: обратитесь в Puzzle Systems, специалисты оценят вашу инфраструктуру и подберут решения.'+tail+'</div>';
+    if(!ks.length&&!stats.bossLeak)h+='<div class="rec" style="--pc:'+C.lime+'"><b>Ни одна атака не прорвалась.</b> Чтобы так же надёжно была защищена реальная инфраструктура, нужен комплекс решений.'+tail+'</div>';
+    return h+'</div>';
+  }
+  function finish(win,reason){
+    if(state==='over')return;
+    state='over';silentPause=false;result=win?'win':(reason||'lose');
+    if(typeof gameOver==='function')gameOver(win);
+    var pb=$('pausebtn');if(pb){pb.disabled=true;pb.setAttribute('aria-pressed','false');}
+    T(function(t){if(t.disableClosingConfirmation)t.disableClosingConfirmation();});
+    haptic(win?'ok':'bad');
+    var fresh=score>best;if(fresh){best=score;try{localStorage.setItem(GAME.key,String(best));}catch(e){}}
+    var total=stats.spawned,accN=total?stats.neutral/total:1;
+    var stars=0;if(win){stars=1;if(integrity>=60)stars++;if(accN>=.75)stars++;}
+    var leaked=0;for(var k in stats.miss)leaked+=stats.miss[k];
+    var h='<span class="lbl">'+esc(GAME.reportLabel||'Отчёт смены')+'</span><h2>'+(win?esc(GAME.winTitle||'Периметр защищён'):esc(reason||'Периметр прорван'))+'</h2>';
+    if(win){h+='<div class="stars" aria-label="'+stars+' из 3 звёзд">';for(var i=0;i<3;i++)h+=i<stars?'★':'<i>★</i>';h+='</div>';}
+    h+='<dl class="rep"><dt>Счёт</dt><dd>'+score+(fresh?' · рекорд!':'')+'</dd>'+
+      '<dt>'+esc(GAME.waveLabel)+'</dt><dd>'+Math.min(wave,GAME.waves)+' из '+GAME.waves+'</dd>'+
+      '<dt>'+esc(GAME.intLabel||'Целостность периметра')+'</dt><dd>'+Math.max(0,Math.round(integrity))+'%</dd>'+
+      '<dt>'+esc(GAME.neutralLabel||'Нейтрализовано угроз')+'</dt><dd>'+stats.neutral+' из '+total+'</dd>'+
+      '<dt>Пропущено атак</dt><dd>'+(leaked+(stats.bossLeak?1:0))+'</dd>'+gameReport()+'</dl>';
+    if(win)h+='<p class="small">Звёзды: победа, периметр от 60%, '+esc(GAME.starsNote||'нейтрализовано от 75% угроз')+'.</p>';
+    h+=recsHTML();
+    h+='<div class="acts"><button class="btn" type="button" id="again">Сыграть ещё раз</button><button class="btn ghost" type="button" id="tomenu">Главное меню</button></div>';
+    showOverlay(h,false);
+    $('again').addEventListener('click',start);$('tomenu').addEventListener('click',showMenu);
+    renderPanels();syncBack();
+  }
+  function syncBack(){if(!MOBILE)return;T(function(t){if(!t.BackButton)return;var show=true;if(show)t.BackButton.show();else t.BackButton.hide();});}
+  if(MOBILE)T(function(t){if(t.BackButton)t.BackButton.onClick(function(){if(sheetOpen)closeSheet();else if(state==='play')pauseGame();else if(state==='pause')resumeGame();else goHome();});});
+
+  document.addEventListener('keydown',function(e){
+    var k=e.key,isP=k==='p'||k==='P'||k==='з'||k==='З';
+    if(isP||k==='Escape'){
+      if(state==='pause'&&!silentPause){resumeGame();e.preventDefault();}
+      else if(state==='play'){pauseGame();e.preventDefault();}
+      return;
+    }
+    if(state==='play'&&typeof gameKey==='function')gameKey(e);
+  });
+  var pb0=$('pausebtn');
+  if(pb0)pb0.addEventListener('click',function(){if(state==='play')pauseGame();else if(state==='pause'&&!silentPause)resumeGame();});
+  document.addEventListener('visibilitychange',function(){if(document.hidden&&state==='play')pauseGame();});
+
+  // ---------- layout ----------
+  function fit(){
+    var st=$('stage'),box=$('fieldbox');if(!st||!box)return;
+    if(MOBILE){var h=window.innerHeight;if(tg&&tg.viewportStableHeight)h=Math.max(300,tg.viewportStableHeight);document.documentElement.style.setProperty('--app-h',h+'px');}
+    var a=GAME.aspect||1,sw=st.clientWidth,sh=st.clientHeight,w=sw,hh=w/a;
+    if(GAME.fluid&&MOBILE){a=clamp(sw/sh,.5,a);hh=w/a;}
+    if(hh>sh){hh=sh;w=hh*a;}
+    if(GAME.maxW&&w>GAME.maxW){w=GAME.maxW;hh=w/a;}
+    w=Math.floor(Math.max(200,w));hh=Math.floor(Math.max(200/a,hh));
+    box.style.width=w+'px';box.style.height=hh+'px';
+    if(typeof gameFit==='function')gameFit(w,hh);
+  }
+  window.addEventListener('resize',fit);
+  if(MOBILE)T(function(t){if(t.onEvent)t.onEvent('viewportChanged',fit);});
+
+  var L={};
+  function setTxt(id,v){var el=$(id);if(el&&L[id]!==v){el.textContent=v;L[id]=v;}}
+  function hud(){
+    setTxt('score',String(score));
+    setTxt('wave',state!=='menu'?Math.min(wave,GAME.waves)+'/'+GAME.waves:'—');
+    setTxt('best',String(best));
+    if(typeof gameHud==='function')gameHud(setTxt);
+    var iv=Math.round(integrity);
+    if(L.int!==iv){L.int=iv;var it=$('intText');if(it)it.textContent=iv+'%';var f=$('intFill');if(f){f.style.width=iv+'%';f.classList.toggle('low',iv<35);}}
+  }
+
+  try{best=+localStorage.getItem(GAME.key)||0;}catch(e){}
+  if(cv&&GAME.W){cv.width=Math.round(GAME.W*dpr);cv.height=Math.round(GAME.H*dpr);}
+  showMenu();fit();
+  if(document.fonts&&document.fonts.ready)document.fonts.ready.then(fit);
+  setTimeout(fit,300);
+  last=performance.now();
+  var panelT=0;
+  function frame(now){
+    var dt=Math.min(.1,(now-last)/1000);last=now;
+    fxUpdate(dt);
+    if(state==='play')gameUpdate(dt);
+    if(ctx){ctx.setTransform(dpr,0,0,dpr,0,0);gameDraw();}
+    hud();
+    panelT-=dt;if(panelT<=0){panelT=.2;renderPanels();}
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+  window.__g={get:function(){var o={result:result,state:state,wave:wave,score:score,integrity:integrity,neutral:stats?stats.neutral:0,spawned:stats?stats.spawned:0,miss:stats?stats.miss:{}};if(typeof gameDebug==='function'){var d=gameDebug();for(var x in d)o[x]=d[x];}return o;},
+    start:start,finish:finish,hurt:function(v){integrity=v;},solFor:solFor,api:typeof gameApi==='object'?gameApi:{}};
+})();
+</script>
+
+</body>
+</html>

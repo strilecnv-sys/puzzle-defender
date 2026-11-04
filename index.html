@@ -66,6 +66,16 @@ footer a{color:var(--good);text-decoration:none;font-weight:700}
 @keyframes bob{50%{transform:translateY(-6px)}}
 .slide{animation:slide 2.4s ease-in-out infinite}
 @keyframes slide{50%{transform:translateX(10px)}}
+.bounce{animation:bounce 1.4s ease-in-out infinite}
+@keyframes bounce{50%{transform:translate(14px,-26px)}}
+.tilt{transform-box:fill-box;transform-origin:50% 100%;animation:tilt 3s ease-in-out infinite}
+@keyframes tilt{25%{transform:rotate(-7deg) translateX(-6px)}75%{transform:rotate(7deg) translateX(6px)}}
+.shotup{animation:shotup 1s linear infinite}
+@keyframes shotup{from{transform:translateY(0);opacity:1}to{transform:translateY(-46px);opacity:0}}
+.roll2{offset-path:path("M80 100L40 56L60 32");animation:walk 1.6s linear infinite}
+.rush{transform-box:fill-box;transform-origin:center;animation:rush 2.2s ease-in infinite}
+.r2b{animation-delay:-.7s}.r3b{animation-delay:-1.4s}
+@keyframes rush{0%{transform:translateY(0) scale(.6);opacity:0}15%{opacity:1}100%{transform:translateY(70px) scale(1.8);opacity:0}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -118,6 +128,24 @@ footer a{color:var(--good);text-decoration:none;font-weight:700}
         <span class="best" id="best-defender"></span>
       </span>
     </a>
+    <a class="card" href="ciso.html" data-game="ciso">
+      <span class="prev"><svg viewBox="0 0 160 110" aria-hidden="true"><rect x="22" y="10" width="24" height="5" rx="2.5" fill="#16245a"/><rect x="22" y="10" width="18" height="5" rx="2.5" fill="#AFFB33"/><rect x="53" y="10" width="24" height="5" rx="2.5" fill="#16245a"/><rect x="53" y="10" width="14" height="5" rx="2.5" fill="#2176FF"/><rect x="84" y="10" width="24" height="5" rx="2.5" fill="#16245a"/><rect x="84" y="10" width="20" height="5" rx="2.5" fill="#FFD43B"/><rect x="115" y="10" width="24" height="5" rx="2.5" fill="#16245a"/><rect x="115" y="10" width="9" height="5" rx="2.5" fill="#FF4D5E"/><g class="tilt"><rect x="46" y="26" width="68" height="76" rx="9" fill="#16245a" stroke="#22306a"/><circle cx="80" cy="50" r="11" fill="#A78BFA"/><rect x="58" y="70" width="44" height="5" rx="2.5" fill="#93a0cf" opacity=".6"/><rect x="64" y="80" width="32" height="5" rx="2.5" fill="#93a0cf" opacity=".4"/></g><text x="24" y="70" font-size="16" fill="#FF4D5E" font-family="Manrope,sans-serif" font-weight="800">←</text><text x="124" y="70" font-size="16" fill="#AFFB33" font-family="Manrope,sans-serif" font-weight="800">→</text></svg></span>
+      <span class="body">
+        <span class="genre">Симулятор</span>
+        <span class="t">Puzzle CISO</span>
+        <span class="pitch">Станьте директором по ИБ: свайпайте решения и держите баланс бюджета, защиты и бизнеса.</span>
+        <span class="best" id="best-ciso"></span>
+      </span>
+    </a>
+    <a class="card" href="phish-or-not.html" data-game="phish-or-not">
+      <span class="prev"><svg viewBox="0 0 160 110" aria-hidden="true"><g class="tilt"><rect x="34" y="10" width="92" height="66" rx="9" fill="#16245a" stroke="#22306a"/><rect x="44" y="20" width="16" height="12" rx="2" fill="none" stroke="#FFD43B" stroke-width="2"/><path d="M44 20l8 7l8-7" fill="none" stroke="#FFD43B" stroke-width="2"/><rect x="66" y="22" width="48" height="4" rx="2" fill="#eef2ff" opacity=".7"/><rect x="44" y="42" width="70" height="4" rx="2" fill="#93a0cf" opacity=".5"/><rect x="44" y="52" width="56" height="4" rx="2" fill="#93a0cf" opacity=".5"/><rect x="44" y="62" width="30" height="4" rx="2" fill="#2176FF"/></g><rect x="26" y="86" width="50" height="16" rx="8" fill="#FF4D5E"/><text x="51" y="97.5" text-anchor="middle" font-size="9" font-weight="800" fill="#0a1230" font-family="Manrope,sans-serif">АТАКА</text><rect x="84" y="86" width="50" height="16" rx="8" fill="#AFFB33"/><text x="109" y="97.5" text-anchor="middle" font-size="9" font-weight="800" fill="#0a1230" font-family="Manrope,sans-serif">НОРМА</text></svg></span>
+      <span class="body">
+        <span class="genre">Реакция</span>
+        <span class="t">Phish or Not</span>
+        <span class="pitch">Письма, сообщения и события: успейте решить, атака это или норма.</span>
+        <span class="best" id="best-phish-or-not"></span>
+      </span>
+    </a>
     <a class="card" href="match.html" data-game="match">
       <span class="prev"><svg viewBox="0 0 160 110" aria-hidden="true"><rect x="20" y="14" width="21" height="21" rx="5" fill="#FF4D5E"/><rect x="45" y="14" width="21" height="21" rx="5" fill="#2176FF"/><rect x="70" y="14" width="21" height="21" rx="5" fill="#A78BFA"/><rect x="95" y="14" width="21" height="21" rx="5" fill="#AFFB33"/><rect x="120" y="14" width="21" height="21" rx="5" fill="#FFD43B"/><rect x="20" y="42" width="21" height="21" rx="5" fill="#6EE7B7"/><rect class="pop" x="45" y="42" width="21" height="21" rx="5" fill="#AFFB33"/><rect class="pop" x="70" y="42" width="21" height="21" rx="5" fill="#AFFB33"/><rect class="pop" x="95" y="42" width="21" height="21" rx="5" fill="#AFFB33"/><rect x="120" y="42" width="21" height="21" rx="5" fill="#FF8F0C"/><rect x="20" y="70" width="21" height="21" rx="5" fill="#FFD43B"/><rect x="45" y="70" width="21" height="21" rx="5" fill="#A78BFA"/><rect x="70" y="70" width="21" height="21" rx="5" fill="#2176FF"/><rect x="95" y="70" width="21" height="21" rx="5" fill="#6EE7B7"/><rect x="120" y="70" width="21" height="21" rx="5" fill="#FF4D5E"/><rect x="42" y="39" width="77" height="27" rx="7" fill="none" stroke="#eef2ff" stroke-width="1.5" stroke-dasharray="3 3" class="blink"/></svg></span>
       <span class="body">
@@ -134,6 +162,24 @@ footer a{color:var(--good);text-decoration:none;font-weight:700}
         <span class="t">Puzzle Blast</span>
         <span class="pitch">Ставьте фигуры-решения на поле 8×8 и сжигайте линии.</span>
         <span class="best" id="best-blast"></span>
+      </span>
+    </a>
+    <a class="card" href="2048.html" data-game="2048">
+      <span class="prev"><svg viewBox="0 0 160 110" aria-hidden="true"><rect x="30" y="6" width="23" height="23" rx="5" fill="#16245a"/><rect x="56" y="6" width="23" height="23" rx="5" fill="#16245a"/><rect x="82" y="6" width="23" height="23" rx="5" fill="#16245a"/><rect x="108" y="6" width="23" height="23" rx="5" fill="#16245a"/><rect x="30" y="32" width="23" height="23" rx="5" fill="#16245a"/><rect x="56" y="32" width="23" height="23" rx="5" fill="#16245a"/><rect x="82" y="32" width="23" height="23" rx="5" fill="#16245a"/><rect x="108" y="32" width="23" height="23" rx="5" fill="#16245a"/><rect x="30" y="58" width="23" height="23" rx="5" fill="#16245a"/><rect x="56" y="58" width="23" height="23" rx="5" fill="#16245a"/><rect x="82" y="58" width="23" height="23" rx="5" fill="#16245a"/><rect x="108" y="58" width="23" height="23" rx="5" fill="#16245a"/><rect x="30" y="84" width="23" height="23" rx="5" fill="#16245a"/><rect x="56" y="84" width="23" height="23" rx="5" fill="#16245a"/><rect x="82" y="84" width="23" height="23" rx="5" fill="#16245a"/><rect x="108" y="84" width="23" height="23" rx="5" fill="#16245a"/><rect x="30" y="6" width="23" height="23" rx="5" fill="#2176FF"/><rect class="slide" x="56" y="6" width="23" height="23" rx="5" fill="#2176FF"/><rect x="108" y="32" width="23" height="23" rx="5" fill="#AFFB33"/><rect x="56" y="58" width="23" height="23" rx="5" fill="#A78BFA"/><rect x="108" y="84" width="23" height="23" rx="5" fill="none" stroke="#FF4D5E" stroke-width="2" class="blink"/><text x="119.5" y="100" text-anchor="middle" font-size="11" font-weight="800" fill="#FF4D5E" font-family="Manrope,sans-serif">3</text></svg></span>
+      <span class="body">
+        <span class="genre">Головоломка</span>
+        <span class="t">Puzzle 2048</span>
+        <span class="pitch">Сливайте плитки-решения и направляйте их в угрозы своего цвета.</span>
+        <span class="best" id="best-2048"></span>
+      </span>
+    </a>
+    <a class="card" href="minesweeper.html" data-game="minesweeper">
+      <span class="prev"><svg viewBox="0 0 160 110" aria-hidden="true"><rect x="36" y="8" width="20" height="20" rx="4" fill="#22306a"/><rect x="59" y="8" width="20" height="20" rx="4" fill="#22306a"/><rect x="82" y="8" width="20" height="20" rx="4" fill="#101a40" stroke="#16245a"/><text x="92" y="22.5" text-anchor="middle" font-size="12" font-weight="800" fill="#2176FF" font-family="Manrope,sans-serif">1</text><rect x="105" y="8" width="20" height="20" rx="4" fill="#22306a"/><rect x="36" y="31" width="20" height="20" rx="4" fill="#22306a"/><rect x="59" y="31" width="20" height="20" rx="4" fill="#101a40" stroke="#16245a"/><text x="69" y="45.5" text-anchor="middle" font-size="12" font-weight="800" fill="#2176FF" font-family="Manrope,sans-serif">1</text><rect x="82" y="31" width="20" height="20" rx="4" fill="#101a40" stroke="#16245a"/><text x="92" y="45.5" text-anchor="middle" font-size="12" font-weight="800" fill="#2176FF" font-family="Manrope,sans-serif">2</text><rect x="105" y="31" width="20" height="20" rx="4" fill="#22306a"/><circle cx="115" cy="41" r="5" fill="#FF4D5E" class="blink"/><rect x="36" y="54" width="20" height="20" rx="4" fill="#101a40" stroke="#16245a"/><text x="46" y="68.5" text-anchor="middle" font-size="12" font-weight="800" fill="#2176FF" font-family="Manrope,sans-serif">1</text><rect x="59" y="54" width="20" height="20" rx="4" fill="#22306a"/><circle cx="69" cy="64" r="5" fill="#FF4D5E" class="blink"/><rect x="82" y="54" width="20" height="20" rx="4" fill="#101a40" stroke="#16245a"/><text x="92" y="68.5" text-anchor="middle" font-size="12" font-weight="800" fill="#2176FF" font-family="Manrope,sans-serif">2</text><rect x="105" y="54" width="20" height="20" rx="4" fill="#22306a"/><rect x="36" y="77" width="20" height="20" rx="4" fill="#22306a"/><rect x="59" y="77" width="20" height="20" rx="4" fill="#22306a"/><rect x="82" y="77" width="20" height="20" rx="4" fill="#22306a"/><rect x="105" y="77" width="20" height="20" rx="4" fill="#22306a"/></svg></span>
+      <span class="body">
+        <span class="genre">Сапёр</span>
+        <span class="t">Puzzle Minesweeper</span>
+        <span class="pitch">Ищите угрозы в сети по подсказкам и обезвреживайте нужным решением.</span>
+        <span class="best" id="best-minesweeper"></span>
       </span>
     </a>
     <a class="card" href="zuma.html" data-game="zuma">
@@ -155,6 +201,42 @@ footer a{color:var(--good);text-decoration:none;font-weight:700}
         <span class="t">Puzzle Snake</span>
         <span class="pitch">Собирайте решения и сбивайте угрозы того же цвета.</span>
         <span class="best" id="best-snake"></span>
+      </span>
+    </a>
+    <a class="card" href="breakout.html" data-game="breakout">
+      <span class="prev"><svg viewBox="0 0 160 110" aria-hidden="true"><rect x="8.0" y="8" width="22" height="9" rx="2.5" fill="#FF4D5E"/><rect x="32.5" y="8" width="22" height="9" rx="2.5" fill="#FF4D5E"/><rect x="57.0" y="8" width="22" height="9" rx="2.5" fill="#FF4D5E"/><rect x="81.5" y="8" width="22" height="9" rx="2.5" fill="#FF4D5E"/><rect x="106.0" y="8" width="22" height="9" rx="2.5" fill="#FF4D5E"/><rect x="130.5" y="8" width="22" height="9" rx="2.5" fill="#FF4D5E"/><rect x="8.0" y="20" width="22" height="9" rx="2.5" fill="#FFD43B"/><rect x="32.5" y="20" width="22" height="9" rx="2.5" fill="#FFD43B"/><rect x="57.0" y="20" width="22" height="9" rx="2.5" fill="#FFD43B"/><rect x="81.5" y="20" width="22" height="9" rx="2.5" fill="#FFD43B"/><rect x="106.0" y="20" width="22" height="9" rx="2.5" fill="#FFD43B"/><rect x="130.5" y="20" width="22" height="9" rx="2.5" fill="#FFD43B"/><rect x="8.0" y="32" width="22" height="9" rx="2.5" fill="#6EE7B7"/><rect x="32.5" y="32" width="22" height="9" rx="2.5" fill="#6EE7B7"/><rect x="57.0" y="32" width="22" height="9" rx="2.5" fill="#6EE7B7"/><rect x="81.5" y="32" width="22" height="9" rx="2.5" fill="#6EE7B7"/><rect x="106.0" y="32" width="22" height="9" rx="2.5" fill="#6EE7B7"/><rect x="130.5" y="32" width="22" height="9" rx="2.5" fill="#6EE7B7"/><line x1="8" y1="78" x2="152" y2="78" stroke="#2176FF" stroke-width="1.5" stroke-dasharray="4 4"/><circle class="bounce" cx="78" cy="62" r="5" fill="#AFFB33"/><rect x="58" y="92" width="42" height="7" rx="3.5" fill="#AFFB33"/></svg></span>
+      <span class="body">
+        <span class="genre">Арканоид</span>
+        <span class="t">Puzzle Breakout</span>
+        <span class="pitch">Заряжайте шар решением и пробивайте блоки-угрозы своего цвета.</span>
+        <span class="best" id="best-breakout"></span>
+      </span>
+    </a>
+    <a class="card" href="ricochet.html" data-game="ricochet">
+      <span class="prev"><svg viewBox="0 0 160 110" aria-hidden="true"><rect x="12" y="8" width="26" height="18" rx="4" fill="#FF4D5E"/><text x="25" y="21" text-anchor="middle" font-size="10" font-weight="800" fill="#0a1230" font-family="Manrope,sans-serif">9</text><rect x="42" y="8" width="26" height="18" rx="4" fill="#FFD43B"/><text x="55" y="21" text-anchor="middle" font-size="10" font-weight="800" fill="#0a1230" font-family="Manrope,sans-serif">4</text><rect x="102" y="8" width="26" height="18" rx="4" fill="#A78BFA"/><text x="115" y="21" text-anchor="middle" font-size="10" font-weight="800" fill="#0a1230" font-family="Manrope,sans-serif">12</text><rect x="72" y="30" width="26" height="18" rx="4" fill="#6EE7B7"/><text x="85" y="43" text-anchor="middle" font-size="10" font-weight="800" fill="#0a1230" font-family="Manrope,sans-serif">6</text><rect x="132" y="30" width="26" height="18" rx="4" fill="#FF8F0C"/><text x="145" y="43" text-anchor="middle" font-size="10" font-weight="800" fill="#0a1230" font-family="Manrope,sans-serif">3</text><path d="M80 100L40 56L60 32" fill="none" stroke="#eef2ff" stroke-width="1.5" stroke-dasharray="3 4" opacity=".6"/><circle class="roll2" r="4" fill="#AFFB33"/><circle cx="80" cy="100" r="5" fill="#AFFB33"/><line x1="6" y1="88" x2="154" y2="88" stroke="#2176FF" stroke-width="1.5" stroke-dasharray="4 4"/></svg></span>
+      <span class="body">
+        <span class="genre">Рикошет</span>
+        <span class="t">Puzzle Ricochet</span>
+        <span class="pitch">Прицельтесь и выпустите залп шаров по спускающимся блокам-угрозам.</span>
+        <span class="best" id="best-ricochet"></span>
+      </span>
+    </a>
+    <a class="card" href="galaxy.html" data-game="galaxy">
+      <span class="prev"><svg viewBox="0 0 160 110" aria-hidden="true"><g class="slide"><path d="M24 12l7 5l7-5v6l-7 5l-7-5z" fill="#FF4D5E"/><path d="M48 12l7 5l7-5v6l-7 5l-7-5z" fill="#AFFB33"/><path d="M72 12l7 5l7-5v6l-7 5l-7-5z" fill="#2176FF"/><path d="M96 12l7 5l7-5v6l-7 5l-7-5z" fill="#FFD43B"/><path d="M120 12l7 5l7-5v6l-7 5l-7-5z" fill="#A78BFA"/><path d="M24 28l7 5l7-5v6l-7 5l-7-5z" fill="#2176FF"/><path d="M48 28l7 5l7-5v6l-7 5l-7-5z" fill="#FFD43B"/><path d="M72 28l7 5l7-5v6l-7 5l-7-5z" fill="#A78BFA"/><path d="M96 28l7 5l7-5v6l-7 5l-7-5z" fill="#6EE7B7"/><path d="M120 28l7 5l7-5v6l-7 5l-7-5z" fill="#FF8F0C"/></g><rect class="shotup" x="78.5" y="70" width="3" height="9" rx="1.5" fill="#AFFB33"/><path d="M80 82l10 18h-20z" fill="#2176FF"/><circle cx="80" cy="94" r="3" fill="#AFFB33"/><circle cx="12" cy="60" r=".9" fill="#eef2ff" opacity=".5"/><circle cx="146" cy="48" r=".9" fill="#eef2ff" opacity=".5"/><circle cx="30" cy="96" r=".9" fill="#eef2ff" opacity=".5"/><circle cx="132" cy="90" r=".9" fill="#eef2ff" opacity=".5"/><circle cx="110" cy="64" r=".9" fill="#eef2ff" opacity=".5"/></svg></span>
+      <span class="body">
+        <span class="genre">Шутер</span>
+        <span class="t">Puzzle Galaxy</span>
+        <span class="pitch">Сбивайте строй кораблей-угроз выстрелами нужного решения.</span>
+        <span class="best" id="best-galaxy"></span>
+      </span>
+    </a>
+    <a class="card" href="runner.html" data-game="runner">
+      <span class="prev"><svg viewBox="0 0 160 110" aria-hidden="true"><path d="M66 6L20 110M80 6V110M94 6L140 110" stroke="#22306a" stroke-width="1.5"/><path d="M73 6L50 110M87 6L110 110" stroke="#16245a" stroke-width="1" stroke-dasharray="4 6"/><circle class="rush" cx="80" cy="20" r="4" fill="#FF4D5E"/><rect class="rush r2b" x="62" y="16" width="8" height="8" rx="2" fill="#AFFB33"/><circle class="rush r3b" cx="96" cy="18" r="4" fill="#FFD43B"/><circle cx="80" cy="92" r="7" fill="#2176FF"/><rect x="74" y="99" width="12" height="9" rx="3" fill="#2176FF"/></svg></span>
+      <span class="body">
+        <span class="genre">Раннер</span>
+        <span class="t">Puzzle Runner</span>
+        <span class="pitch">Бегите по сети, подбирайте решения и нейтрализуйте угрозы.</span>
+        <span class="best" id="best-runner"></span>
       </span>
     </a>
   </div>
@@ -180,7 +262,7 @@ footer a{color:var(--good);text-decoration:none;font-weight:700}
   // best results each game saved on this device
   function get(k){try{return +localStorage.getItem(k)||0;}catch(e){return 0;}}
   function show(key,txt){var el=document.getElementById('best-'+key);if(el)el.textContent=txt;}
-  var KEYS={defender:'pd-best',match:'pmatch-best',blast:'pblast2-best',zuma:'pzuma-best',snake:'psnake2-best'};
+  var KEYS={defender:'pd-best',match:'pmatch-best',blast:'pblast2-best',zuma:'pzuma-best',snake:'psnake2-best','2048':'p2048-best',breakout:'pbreak-best',ciso:'pciso-best',galaxy:'pgalaxy-best',minesweeper:'pmines-best','phish-or-not':'pphish-best',ricochet:'pricochet-best',runner:'prunner-best'};
   Object.keys(KEYS).forEach(function(g){var v=get(KEYS[g]);if(v)show(g,'Рекорд: '+v);});
   var stars=0;
   try{for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(k&&k.indexOf('ectg-')===0)stars=Math.max(stars,get(k));}}catch(e){}
