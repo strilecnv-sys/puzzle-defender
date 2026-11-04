@@ -34,6 +34,9 @@ h1{margin:0;font-family:var(--font-display);font-weight:700;font-size:22px;line-
 .hello p{margin:0;color:var(--muted);font-size:14px}
 .games{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .card{display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;text-decoration:none;color:inherit;transition:transform .12s ease,border-color .2s ease}
+.card.wide{grid-column:1/-1}
+.card.wide .prev{aspect-ratio:320/110}
+.card.wide .t{font-size:17px}
 .card:active{transform:scale(.97);border-color:var(--good)}
 .card:focus-visible{outline:2px solid var(--good);outline-offset:3px}
 .prev{display:block;aspect-ratio:160/110;background:linear-gradient(180deg,#0c1638,#0a1230);border-bottom:1px solid var(--line)}
@@ -76,6 +79,10 @@ footer a{color:var(--good);text-decoration:none;font-weight:700}
 .rush{transform-box:fill-box;transform-origin:center;animation:rush 2.2s ease-in infinite}
 .r2b{animation-delay:-.7s}.r3b{animation-delay:-1.4s}
 @keyframes rush{0%{transform:translateY(0) scale(.6);opacity:0}15%{opacity:1}100%{transform:translateY(70px) scale(1.8);opacity:0}}
+.hop{animation:hop 1.8s ease-in-out infinite}
+@keyframes hop{0%,100%{transform:translate(0,0)}25%{transform:translate(18px,-30px)}50%{transform:translate(40px,0)}75%{transform:translate(20px,0)}}
+.patrol{animation:patrol 3s ease-in-out infinite}
+@keyframes patrol{50%{transform:translateX(-14px)}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -96,6 +103,15 @@ footer a{color:var(--good);text-decoration:none;font-weight:700}
   </div>
 
   <div class="games">
+    <a class="card wide" href="quest.html" data-game="quest">
+      <span class="prev"><svg viewBox="0 0 320 110" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><g fill="#93a0cf" opacity=".12"><circle cx="10" cy="10" r="1"/><circle cx="10" cy="28" r="1"/><circle cx="10" cy="46" r="1"/><circle cx="10" cy="64" r="1"/><circle cx="32" cy="10" r="1"/><circle cx="32" cy="28" r="1"/><circle cx="32" cy="46" r="1"/><circle cx="32" cy="64" r="1"/><circle cx="54" cy="10" r="1"/><circle cx="54" cy="28" r="1"/><circle cx="54" cy="46" r="1"/><circle cx="54" cy="64" r="1"/><circle cx="76" cy="10" r="1"/><circle cx="76" cy="28" r="1"/><circle cx="76" cy="46" r="1"/><circle cx="76" cy="64" r="1"/><circle cx="98" cy="10" r="1"/><circle cx="98" cy="28" r="1"/><circle cx="98" cy="46" r="1"/><circle cx="98" cy="64" r="1"/><circle cx="120" cy="10" r="1"/><circle cx="120" cy="28" r="1"/><circle cx="120" cy="46" r="1"/><circle cx="120" cy="64" r="1"/><circle cx="142" cy="10" r="1"/><circle cx="142" cy="28" r="1"/><circle cx="142" cy="46" r="1"/><circle cx="142" cy="64" r="1"/><circle cx="164" cy="10" r="1"/><circle cx="164" cy="28" r="1"/><circle cx="164" cy="46" r="1"/><circle cx="164" cy="64" r="1"/><circle cx="186" cy="10" r="1"/><circle cx="186" cy="28" r="1"/><circle cx="186" cy="46" r="1"/><circle cx="186" cy="64" r="1"/><circle cx="208" cy="10" r="1"/><circle cx="208" cy="28" r="1"/><circle cx="208" cy="46" r="1"/><circle cx="208" cy="64" r="1"/><circle cx="230" cy="10" r="1"/><circle cx="230" cy="28" r="1"/><circle cx="230" cy="46" r="1"/><circle cx="230" cy="64" r="1"/><circle cx="252" cy="10" r="1"/><circle cx="252" cy="28" r="1"/><circle cx="252" cy="46" r="1"/><circle cx="252" cy="64" r="1"/><circle cx="274" cy="10" r="1"/><circle cx="274" cy="28" r="1"/><circle cx="274" cy="46" r="1"/><circle cx="274" cy="64" r="1"/><circle cx="296" cy="10" r="1"/><circle cx="296" cy="28" r="1"/><circle cx="296" cy="46" r="1"/><circle cx="296" cy="64" r="1"/><circle cx="318" cy="10" r="1"/><circle cx="318" cy="28" r="1"/><circle cx="318" cy="46" r="1"/><circle cx="318" cy="64" r="1"/></g><g opacity=".35"><circle cx="292" cy="22" r="7" fill="#FF8F0C"/><circle cx="306" cy="34" r="6" fill="#2176FF"/><circle cx="284" cy="38" r="5" fill="#AFFB33"/></g><rect x="0" y="92" width="31" height="18" rx="3" fill="#16245a"/><rect x="0" y="92" width="31" height="4" rx="2" fill="#2176FF" opacity=".6"/><rect x="32" y="92" width="31" height="18" rx="3" fill="#16245a"/><rect x="32" y="92" width="31" height="4" rx="2" fill="#2176FF" opacity=".6"/><rect x="64" y="92" width="31" height="18" rx="3" fill="#16245a"/><rect x="64" y="92" width="31" height="4" rx="2" fill="#2176FF" opacity=".6"/><rect x="96" y="92" width="31" height="18" rx="3" fill="#16245a"/><rect x="96" y="92" width="31" height="4" rx="2" fill="#2176FF" opacity=".6"/><rect x="128" y="92" width="31" height="18" rx="3" fill="#16245a"/><rect x="128" y="92" width="31" height="4" rx="2" fill="#2176FF" opacity=".6"/><rect x="160" y="92" width="31" height="18" rx="3" fill="#16245a"/><rect x="160" y="92" width="31" height="4" rx="2" fill="#2176FF" opacity=".6"/><rect x="192" y="92" width="31" height="18" rx="3" fill="#16245a"/><rect x="192" y="92" width="31" height="4" rx="2" fill="#2176FF" opacity=".6"/><rect x="224" y="92" width="31" height="18" rx="3" fill="#16245a"/><rect x="224" y="92" width="31" height="4" rx="2" fill="#2176FF" opacity=".6"/><rect x="256" y="92" width="31" height="18" rx="3" fill="#16245a"/><rect x="256" y="92" width="31" height="4" rx="2" fill="#2176FF" opacity=".6"/><rect x="288" y="92" width="31" height="18" rx="3" fill="#16245a"/><rect x="288" y="92" width="31" height="4" rx="2" fill="#2176FF" opacity=".6"/><rect x="96" y="62" width="64" height="10" rx="3" fill="#22306a"/><rect x="190" y="40" width="56" height="10" rx="3" fill="#22306a"/><rect x="262" y="66" width="48" height="10" rx="3" fill="#22306a"/><circle class="bob" style="animation-delay:-0s" cx="112" cy="48" r="4.5" fill="#FFD43B"/><circle class="bob" style="animation-delay:-0.3s" cx="128" cy="48" r="4.5" fill="#FFD43B"/><circle class="bob" style="animation-delay:-0.6s" cx="144" cy="48" r="4.5" fill="#FFD43B"/><circle class="bob" style="animation-delay:-0.2s" cx="206" cy="26" r="4.5" fill="#FFD43B"/><circle class="bob" style="animation-delay:-0.5s" cx="222" cy="26" r="4.5" fill="#FFD43B"/><g class="hop"><rect x="44" y="70" width="16" height="22" rx="5" fill="#AFFB33"/><rect x="47" y="74" width="10" height="5" rx="2" fill="#0a1230"/></g><g class="patrol"><path d="M262 66l8-12h16l8 12z" fill="#FF4D5E"/><circle cx="273" cy="60" r="2" fill="#0a1230"/><circle cx="283" cy="60" r="2" fill="#0a1230"/></g><rect x="200" y="58" width="14" height="14" rx="3" fill="#A78BFA" class="blink"/></svg></span>
+      <span class="body">
+        <span class="genre">Приключение</span>
+        <span class="t">Puzzle Quest</span>
+        <span class="pitch">Платформер: агент Пазл собирает разбитый логотип и спасает директора от хакеров «Чёрного ключа».</span>
+        <span class="best" id="best-quest">Поверните телефон горизонтально</span>
+      </span>
+    </a>
     <a class="card" href="echelon.html" data-game="echelon">
       <span class="prev"><svg viewBox="0 0 160 110" aria-hidden="true"><path d="M-4 20H50V64H104V36H164" fill="none" stroke="#16245a" stroke-width="16" stroke-linejoin="round"/>
 <path d="M-4 20H50V64H104V36H164" fill="none" stroke="#22306a" stroke-width="1.5" stroke-dasharray="4 5"/>
@@ -255,6 +271,7 @@ footer a{color:var(--good);text-decoration:none;font-weight:700}
     if(tgv('6.9'))try{tg.setHeaderColor('#0a1230');tg.setBackgroundColor('#0a1230');}catch(e){}
     if(tgv('7.10'))try{tg.setBottomBarColor('#0a1230');}catch(e){}
     if(tgv('6.1'))try{tg.BackButton.hide();}catch(e){}
+    if(tgv('8.0')){try{tg.unlockOrientation();}catch(e){}try{if(tg.isFullscreen)tg.exitFullscreen();}catch(e){}}
     if(tgv('6.2'))try{tg.disableClosingConfirmation();}catch(e){}
     try{var u=tg.initDataUnsafe&&tg.initDataUnsafe.user;if(u&&u.first_name)document.getElementById('hi').textContent=u.first_name+', выберите игру';}catch(e){}
   }
@@ -266,6 +283,7 @@ footer a{color:var(--good);text-decoration:none;font-weight:700}
   Object.keys(KEYS).forEach(function(g){var v=get(KEYS[g]);if(v)show(g,'Рекорд: '+v);});
   var stars=0;
   try{for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(k&&k.indexOf('ectg-')===0)stars=Math.max(stars,get(k));}}catch(e){}
+  try{var qs=JSON.parse(localStorage.getItem('pquest-save-v1')||'null');if(qs&&qs.levels){var qd=0;for(var lk in qs.levels)if(qs.levels[lk]&&qs.levels[lk].done)qd++;if(qd)show('quest','Пройдено уровней: '+qd+' · играется горизонтально');}}catch(e){}
   if(stars){var s='';for(var j=0;j<3;j++)s+=j<stars?'★':'☆';show('echelon',s);}
   if(tgv('6.9')&&tg.CloudStorage){
     try{tg.CloudStorage.getItem('pd_best',function(err,v){if(!err&&+v>get('pd-best'))show('defender','Рекорд: '+(+v));});}catch(e){}
