@@ -328,31 +328,32 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
   }
 
   // ================= Puzzle Ricochet =================
-  var GAME={id:'ricochet',title:'Puzzle Ricochet',key:'pricochet-best',waves:12,waveLabel:'Волна',W:480,H:720,aspect:480/720,fluid:true,maxW:560,
+  var GAME={id:'ricochet',title:'Puzzle Ricochet',key:'pricochet-best',waves:12,waveLabel:'Волна',W:480,H:694,aspect:480/640,minAspect:480/694,fluid:true,maxW:560,
     bossText:'финальный босс на 12-й волне — широкий блок. Только шары с решением, написанным на нём, снимают его прочность; этапов четыре. Если он дойдёт до линии защиты, периметр получит большой урон.',
     vulnClose:'два разных решения · аудит ИБ'};
   applyBL({
-    cred:{hpk:1,dmg:4,pts:20,trait:'Обычный блок. Шар IDM снимает 3 прочности за удар, остальные — 1.'},
-    sql:{hpk:.9,dmg:4,pts:20,trait:'Появляется парами в соседних клетках.'},
-    brute:{hpk:.9,dmg:3,pts:25,trait:'Каждый ход восстанавливает 1 прочность: перебор не прекращается.'},
-    leak:{hpk:1,dmg:8,pts:30,incident:true,trait:'Обычная прочность, но при прорыве — большой урон периметру.'},
-    ddos:{hpk:.7,dmg:3,pts:10,pack:3,trait:'Появляется тройкой в ряд. Удар шаром «Защита веб-ресурсов» снимает прочность у всей тройки.'},
-    ransom:{hpk:1,dmg:6,pts:30,trait:'При прорыве шифрует один шар: два хода он не участвует в залпе.'},
-    scan:{hpk:1,dmg:4,pts:30,trait:'Каждый ход сдвигается на соседнюю клетку ряда, проверяя порты.'},
-    priv:{hpk:1.1,dmg:6,pts:35,trait:'Прочность скрыта: не видно, сколько ударов осталось.'},
-    lateral:{hpk:1,dmg:5,pts:35,trait:'Каждые два хода перепрыгивает в другое место поля.'},
-    container:{hpk:1,dmg:5,pts:30,trait:'При прорыве наверху появляется ещё один такой же блок.'},
-    vuln:{hpk:1.2,dmg:8,pts:50,trait:'Отдельного решения нет: прочность падает до нуля, только если в блок попали шары двух разных решений. Закрывается аудитом ИБ.'}
+    cred:{hpk:1,dmg:6,pts:20,trait:'Обычный блок. Шар IDM снимает 3 прочности за удар, остальные — 1.'},
+    sql:{hpk:.9,dmg:6,pts:20,trait:'Появляется парами в соседних клетках.'},
+    brute:{hpk:.9,dmg:4,pts:25,trait:'Каждый ход восстанавливает 1 прочность: перебор не прекращается.'},
+    leak:{hpk:1,dmg:11,pts:30,incident:true,trait:'Обычная прочность, но при прорыве — большой урон периметру.'},
+    ddos:{hpk:.7,dmg:4,pts:10,pack:3,trait:'Появляется тройкой в ряд. Удар шаром «Защита веб-ресурсов» снимает прочность у всей тройки.'},
+    ransom:{hpk:1,dmg:8,pts:30,trait:'При прорыве шифрует один шар: два хода он не участвует в залпе.'},
+    scan:{hpk:1,dmg:6,pts:30,trait:'Каждый ход сдвигается на соседнюю клетку ряда, проверяя порты.'},
+    priv:{hpk:1.1,dmg:8,pts:35,trait:'Прочность скрыта: не видно, сколько ударов осталось.'},
+    lateral:{hpk:1,dmg:7,pts:35,trait:'Каждые два хода перепрыгивает в другое место поля.'},
+    container:{hpk:1,dmg:7,pts:30,trait:'При прорыве наверху появляется ещё один такой же блок.'},
+    vuln:{hpk:1.2,dmg:11,pts:50,trait:'Отдельного решения нет: прочность падает до нуля, только если в блок попали шары двух разных решений. Закрывается аудитом ИБ.'}
   });
-  var W=480,H=720,COLS=7,CS=64,GX=16,TOPY=44,DANGER=H-118,LY=H-64,BR=8,ROWS=9,BSPD=880;
+  var W=480,H=694,COLS=7,CS=64,GX=16,TOPY=44,DANGER=H-118,LY=H-64,BR=8,ROWS=9,BSPD=880;
   var blocks=[],rings=[],balls=[],phase='aim',lx=W/2,nextLx=null,nBalls=3,encBalls=0,encTurns=0,toFire=0,fireT=0,volS='idm',flyT=0,quota=0,turn=0,bossOn=false,bossDone=false,aimA=null,rstats=null,sel='idm',hopT=0,landed=0,aimP=null;
-  function gameFit(w,h){var nh=clamp(Math.round(W*h/w),640,900);if(nh===H)return;H=nh;DANGER=H-118;LY=H-64;ROWS=Math.floor((DANGER-TOPY)/CS);if(phase==='aim'||state!=='play')lx=clamp(lx,20,W-20);cv.height=Math.round(H*dpr);}
-  ROWS=Math.floor((DANGER-TOPY)/CS);
+  function gameFit(w,h){var nh=clamp(Math.round(W*h/w),640,694);if(nh===H)return;H=nh;DANGER=H-118;LY=H-64;layoutRows();if(phase==='aim'||state!=='play')lx=clamp(lx,20,W-20);cv.height=Math.round(H*dpr);}
+  function layoutRows(){TOPY=44;ROWS=Math.min(8,Math.floor((DANGER-TOPY)/CS));}
+  layoutRows();
 
   function gameMenu(){
     return '<p>Сверху спускаются <b>блоки-угрозы</b> с прочностью. Прицельтесь и выпустите залп шаров: они рикошетят от стен и блоков.</p>'+
       '<p>Перед залпом выберите <b>решение</b>: шар нужного цвета снимает 3 прочности за удар, другой — только 1. После каждого залпа блоки спускаются на ряд. Блок, дошедший до <b>линии защиты</b>, — прорыв.</p>'+
-      '<p>Кольца «+1» добавляют шар в залп. '+(MOBILE?'Ведите пальцем, чтобы прицелиться, отпустите — залп.':'Мышь — прицел, клик — залп, клавиши 1–0 — решения.')+' Продержитесь <b>12 волн</b>, в последней придёт целевая атака.</p>';
+      '<p>Кольца «+1» добавляют шар в залп. С 7-й волны угрозы ускоряются: через ход спускаются сразу на два ряда. '+(MOBILE?'Ведите пальцем, чтобы прицелиться, отпустите — залп.':'Мышь — прицел, клик — залп, клавиши 1–0 — решения.')+' Продержитесь <b>12 волн</b>, в последней придёт целевая атака.</p>';
   }
   function gameSolUse(s){return 'Шар этого цвета снимает втрое больше прочности';}
   function gameActive(k){var n=0;blocks.forEach(function(b){if(b.k===k)n++;});return n;}
@@ -361,7 +362,7 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
   function gameHud(set){set('balls',state!=='menu'?String(nBalls-encBalls):'—');}
 
   function quotaFor(n){return n===12?3:3+Math.floor(n/4);}
-  function hpFor(k){return Math.max(1,Math.round((2+turn*.45)*TH[k].hpk));}
+  function hpFor(k){return Math.max(1,Math.round((3+turn*.65+wave*.5)*TH[k].hpk));}
   function bx(b){return GX+b.c*CS+(b.dx||0);}
   function by(b){return TOPY+b.r*CS+(b.oy||0);}
   function gameStart(){
@@ -374,6 +375,7 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
     wave=n;quota=quotaFor(n);
     var k=TORD[n-1];
     if(n===1)banner={title:'Волна 1',text:'Прицельтесь и выпустите залп. Шар нужного решения снимает втрое больше прочности.',col:C.lime,k:'cred',life:5};
+    else if(n===7){banner={title:'Волна 7',text:'Угрозы ускорились: теперь через ход они спускаются сразу на два ряда.',col:C.orange,k:TORD[6],life:4};}
     else if(n===12)banner={title:'Финальная волна',text:'После нескольких рядов придёт целевая атака.',col:C.boss,k:'boss',life:3.5};
     else if(k)newThreatBanner(k);
     renderChips();
@@ -383,7 +385,7 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
   function spawnRow(){
     var types=unlockedT(),l=[];
     types.forEach(function(k){l.push([k,k===TORD[wave-1]?3:(k==='cred'||k==='sql'?1.4:1)]);});
-    var n=Math.min(5,2+Math.floor(wave/3)+rint(2)),cols=shuffleArr([0,1,2,3,4,5,6]),placed=0;
+    var n=Math.min(6,3+Math.floor(wave/3)+rint(2)),cols=shuffleArr([0,1,2,3,4,5,6]),placed=0;
     for(var i=0;i<cols.length&&placed<n;i++){
       var c=cols[i];if(occ(c,0))continue;
       var k=weighted(l);if(k==='vuln'&&wave<11&&Math.random()<.5)k='cred';
@@ -391,7 +393,7 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
       if(k==='sql'){addBlock(k,c,0);placed++;if(c+1<COLS&&!occ(c+1,0)){addBlock(k,c+1,0);placed++;}continue;}
       addBlock(k,c,0);placed++;
     }
-    if(Math.random()<.9){var fr=[];for(var q=0;q<COLS;q++)if(!occ(q,0))fr.push(q);if(fr.length)rings.push({c:fr[rint(fr.length)],r:0,oy:-CS});}
+    if(Math.random()<.6){var fr=[];for(var q=0;q<COLS;q++)if(!occ(q,0))fr.push(q);if(fr.length)rings.push({c:fr[rint(fr.length)],r:0,oy:-CS});}
   }
   function spawnBoss(){
     var pl=unlockedS().slice(),need=[];while(need.length<4&&pl.length)need.push(pl.splice(rint(pl.length),1)[0]);
@@ -418,8 +420,9 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
       if(b.k==='brute'&&b.hp<b.max)b.hp++;
     });
     // move down
-    blocks.forEach(function(b){b.r++;b.oy=-CS;});
-    rings.forEach(function(p){p.r++;p.oy=-CS;});
+    var adv=wave>=7&&turn%2===0?2:1;
+    blocks.forEach(function(b){b.r+=adv;b.oy=-CS*adv;});
+    rings.forEach(function(p){p.r+=adv;p.oy=-CS*adv;});
     for(var i=rings.length-1;i>=0;i--)if(rings[i].r>=ROWS)rings.splice(i,1);
     for(var j=blocks.length-1;j>=0;j--){var b=blocks[j];if(b.r>=ROWS){blocks.splice(j,1);breachBlock(b);if(state!=='play')return;}}
     blocks.forEach(function(b){
@@ -575,7 +578,22 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
   cv.addEventListener('pointerleave',function(e){if(e.pointerType==='mouse')aimP=null;});
   function gameKey(e){var k=e.key;if(/^[0-9]$/.test(k)){var i=k==='0'?9:+k-1;choose(SORD[i]);}else if((k===' '||k==='Enter')&&aimP){fire(Math.atan2(aimP.y-LY,aimP.x-lx));e.preventDefault();}}
   function gameMenuEnter(){blocks=[];rings=[];balls=[];renderChips();}
-  var gameApi={blocks:function(){return blocks;},phase:function(){return phase;},fire:fire,choose:choose,lx:function(){return lx;},K:function(){return{LY:LY,CS:CS,GX:GX,TOPY:TOPY,ROWS:ROWS};}};
+  // bot helper: trace one ball for an angle and score the blocks it would touch (no side effects)
+  function probe(ang,sv){
+    var b={x:lx,y:LY,vx:Math.cos(ang)*BSPD,vy:Math.sin(ang)*BSPD},sc=0,dt=1/240;
+    for(var t=0;t<2.5;t+=dt){
+      b.x+=b.vx*dt;b.y+=b.vy*dt;
+      if(b.x<BR){b.x=BR;b.vx=Math.abs(b.vx);}if(b.x>W-BR){b.x=W-BR;b.vx=-Math.abs(b.vx);}if(b.y<BR+30){b.y=BR+30;b.vy=Math.abs(b.vy);}
+      if(b.y>=LY&&b.vy>0)break;
+      for(var i=0;i<blocks.length;i++){var br=blocks[i],x0=bx(br)+3,y0=by(br)+3,w=CS*(br.w||1)-6,h=CS-6;
+        var cx=clamp(b.x,x0,x0+w),cy=clamp(b.y,y0,y0+h),dx=b.x-cx,dy=b.y-cy;
+        if(dx*dx+dy*dy<=BR*BR){var ox=Math.min(b.x+BR-x0,x0+w-(b.x-BR)),oy=Math.min(b.y+BR-y0,y0+h-(b.y-BR));
+          if(ox<oy){b.vx=b.x<x0+w/2?-Math.abs(b.vx):Math.abs(b.vx);b.x+=b.vx>0?ox:-ox;}else{b.vy=b.y<y0+h/2?-Math.abs(b.vy):Math.abs(b.vy);b.y+=b.vy>0?oy:-oy;}
+          var m=br.k==='boss'?(br.need[br.phase]===sv?3:0):(solFor(br.k)===sv?3:1);sc+=m*(1+br.r/4);break;}}
+    }
+    return sc;
+  }
+  var gameApi={probe:probe,blocks:function(){return blocks;},phase:function(){return phase;},fire:fire,choose:choose,lx:function(){return lx;},K:function(){return{LY:LY,CS:CS,GX:GX,TOPY:TOPY,ROWS:ROWS};}};
 
   // ================= shared shell: panels, menus, report =================
   function fromWave(k){return GAME.unlock?(GAME.unlock[k]||99):TORD.indexOf(k)+1;}
@@ -740,7 +758,7 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
     var st=$('stage'),box=$('fieldbox');if(!st||!box)return;
     if(MOBILE){var h=window.innerHeight;if(tg&&tg.viewportStableHeight)h=Math.max(300,tg.viewportStableHeight);document.documentElement.style.setProperty('--app-h',h+'px');}
     var a=GAME.aspect||1,sw=st.clientWidth,sh=st.clientHeight,w=sw,hh=w/a;
-    if(GAME.fluid&&MOBILE){a=clamp(sw/sh,.5,a);hh=w/a;}
+    if(GAME.fluid&&MOBILE){a=clamp(sw/sh,GAME.minAspect||.5,a);hh=w/a;}
     if(hh>sh){hh=sh;w=hh*a;}
     if(GAME.maxW&&w>GAME.maxW){w=GAME.maxW;hh=w/a;}
     w=Math.floor(Math.max(200,w));hh=Math.floor(Math.max(200/a,hh));
