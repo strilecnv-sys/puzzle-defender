@@ -154,6 +154,7 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 
   // ---------- Telegram ----------
   function T(fn){try{if(tg)fn(tg);}catch(e){}}
+  function goHome(){location.href='index.html';}
   if(MOBILE)T(function(t){t.ready();t.expand();if(t.disableVerticalSwipes)t.disableVerticalSwipes();if(t.setHeaderColor)t.setHeaderColor('#0a1230');if(t.setBackgroundColor)t.setBackgroundColor('#0a1230');if(t.setBottomBarColor)t.setBottomBarColor('#0a1230');});
   function haptic(kind){if(!MOBILE)return;T(function(t){if(!t.HapticFeedback)return;if(kind==='hit')t.HapticFeedback.impactOccurred('heavy');else if(kind==='ok')t.HapticFeedback.notificationOccurred('success');else if(kind==='bad')t.HapticFeedback.notificationOccurred('error');else t.HapticFeedback.impactOccurred('light');});}
   document.addEventListener('click',function(e){var a=e.target.closest&&e.target.closest('a.site');if(a&&tg&&tg.openLink&&MOBILE){e.preventDefault();try{tg.openLink(SITE);}catch(x){window.open(SITE,'_blank');}}});
@@ -687,9 +688,10 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
       '<p>Решение того же цвета, что и угроза, — её пара. Когда <b>три и больше шаров одного цвета</b> оказываются рядом, они сгорают. Каждый шар, докатившийся до ядра, бьёт по периметру.</p>'+
       '<p>'+(MOBILE?'Прицельтесь пальцем и отпустите, чтобы выстрелить. Нажмите на стрелка, чтобы поменять решение.':'Целитесь мышью, стреляйте кликом. Правая кнопка или пробел — поменять решение.')+' Продержитесь <b>12 волн</b>.</p>'+
       (best?'<p>Рекорд: <b>'+best+'</b></p>':'')+
-      '<div class="acts"><button class="btn" id="go" type="button">Начать игру</button>'+(MOBILE?'<button class="btn ghost" id="menuhelp" type="button">Справочник решений и угроз</button>':'')+'</div>';
+      '<div class="acts"><button class="btn" id="go" type="button">Начать игру</button>'+(MOBILE?'<button class="btn ghost" id="menuhelp" type="button">Справочник решений и угроз</button>':'')+'<button class="btn ghost" id="allgames" type="button">← Все игры</button></div>';
     showOverlay(h,true);
     $('go').addEventListener('click',start);
+    $('allgames').addEventListener('click',goHome);
     if($('menuhelp'))$('menuhelp').addEventListener('click',function(){openSheet('sol');});
     renderPanels();syncBack();
   }
@@ -752,8 +754,8 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
     $('again').addEventListener('click',start);$('tomenu').addEventListener('click',showMenu);
     syncBack();
   }
-  function syncBack(){if(!MOBILE)return;T(function(t){if(!t.BackButton)return;var show=sheetOpen||state==='play'||state==='pause';if(show)t.BackButton.show();else t.BackButton.hide();});}
-  if(MOBILE)T(function(t){if(t.BackButton)t.BackButton.onClick(function(){if(sheetOpen)closeSheet();else if(state==='play')pauseGame();else if(state==='pause')resumeGame();});});
+  function syncBack(){if(!MOBILE)return;T(function(t){if(!t.BackButton)return;var show=true;if(show)t.BackButton.show();else t.BackButton.hide();});}
+  if(MOBILE)T(function(t){if(t.BackButton)t.BackButton.onClick(function(){if(sheetOpen)closeSheet();else if(state==='play')pauseGame();else if(state==='pause')resumeGame();else goHome();});});
 
   document.addEventListener('keydown',function(e){
     var k=e.key,isP=k==='p'||k==='P'||k==='з'||k==='З';
