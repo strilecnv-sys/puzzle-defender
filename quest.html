@@ -1379,7 +1379,197 @@ function bossArena(id,name,theme,song,kind,first){
   L.blk(4,4,first).blk(21,4,first);L.e('start',3,10).e('boss',16,10,{kind:kind});
   return L;
 }
+// ===== Puzzle Quest: hand-made levels of worlds 3–6 =====
+// Rows: 0 top … 12 bottom. Floor surface is row 11 (GROUND); the hero stands in row 10.
+// From the floor a jump reaches 3 rows up; gaps of up to 3 empty tiles can be jumped.
+LB.prototype.ceil=function(x0,x1,y){return this.solid(x0,x1,Math.max(0,y-2),y);};
+LB.prototype.hid=function(x0,x1,y){for(var x=x0;x<=x1;x++)this.set(x,y,10);return this;};
+LB.prototype.crate=function(x,y){return this.set(x,y,13);};
+LB.prototype.pipe=function(x0,x1,y){return this.solid(x0,x1,y,y);};
+LB.prototype.gate=function(x,y0,y1){return this.e('gate',x,y0,{y2:y1});};
+LB.prototype.lockw=function(x,y0,y1){return this.e('lockw',x,y0,{y2:y1});};
+LB.prototype.gap=function(x0,x1){return this.arc(x0-1,x1+1,9,2);};
+
+SIGN_TXT.fwstep='Стена NGFW выдерживает героя: поставьте её у высокой полки и запрыгните сверху.';
+SIGN_TXT.nadkeep='Мост из скрытых платформ виден, пока у вас есть NAD. Не тратьте его до переправы — или ловите платформу.';
+SIGN_TXT.darkmix='В тёмной сети снова Тараны. SIEM и подсветит дорогу, и обезвредит их.';
+SIGN_TXT.edrwall='Секретная серверная заперта шифровальщиком. Выстрел EDR снимет замки.';
+SIGN_TXT.lowroom='Низкий проход между стойками: замок Локера здесь не перепрыгнуть. Держите EDR наготове.';
+SIGN_TXT.gate='Шлюз администратора открывается только в режиме PAM: включите его и коснитесь шлюза.';
+SIGN_TXT.pamdash='Впереди обстрел. 6 секунд режима PAM — неуязвимость: включите и бегите.';
+SIGN_TXT.crates='Ящики — крепкие ступеньки. Но один из них может оказаться Мимиком: прыгать на него больно.';
+SIGN_TXT.pipes='Из труб капают утечки. Встаньте под трубой и включите DLP — импульс достанет источники.';
+SIGN_TXT.sky='Под облаками пропасть. Ловите движущиеся платформы и не торопитесь.';
+SIGN_TXT.darknet='Даркнет: здесь торгуют украденными данными. Угрозы любых видов — берите решения из блоков.';
+
+function buildLevelNew(id){
+  var L;
+  if(id==='3-1'){
+    L=new LB(180);L.name='Коммутатор';L.theme='net';L.song='net';
+    L.ground(0,27).e('start',2,10).e('sign',4,10,{txt:'scanner'}).blk(8,7,'ngfw').e('sign',11,10,{txt:'ngfw'}).frags(12,15,10).e('scanner',21,5,{l:16,r:26}).frags(19,24,10);
+    L.gap(28,29).ground(30,64).plat(33,36,8).frags(33,36,7).e('coffee',38,10).solid(40,41,9,10).frags(40,41,8).solid(42,43,7,10).frags(42,43,6);
+    L.blk(46,7,'ngfw').e('scanner',50,4,{l:46,r:56});
+    // secret shelf: only a NGFW wall gets you up there
+    L.e('sign',52,10,{txt:'fwstep'}).solid(55,61,6,6).frags(55,60,5).e('disk',61,5).frags(56,60,10);
+    L.e('cp',63,10);
+    L.e('mplat',65,10,{w:2,x2:68,spd:55}).frags(66,69,7);
+    L.ground(71,100).solid(74,76,9,10).frags(74,76,8).blk(78,7,'ngfw').e('scanner',82,4,{l:77,r:88}).plat(88,91,8).frags(88,91,7).e('scanner',94,5,{l:90,r:99}).frags(92,98,10);
+    L.gap(101,102).ground(103,140).e('cp',105,10).blk(107,7,'ngfw');
+    L.solid(109,111,9,10).frags(109,111,8).solid(112,113,7,10).frags(112,113,6).e('scanner',117,3,{l:114,r:123}).frags(116,121,10);
+    L.plat(124,127,8).frags(124,127,7).plat(129,132,6).frags(129,132,5).e('coffee',134,10).frags(135,139,10);
+    L.gap(141,143).ground(144,179).e('cp',146,10).blk(149,7,'ngfw').e('scanner',153,5,{l:148,r:158}).solid(160,161,9,10).frags(160,161,8);
+    L.e('scanner',166,4,{l:162,r:171}).frags(163,169,10).frags(171,173,10).e('exit',175,10);
+  }else if(id==='3-2'){
+    L=new LB(186);L.name='Магистраль';L.theme='net';L.song='net';
+    L.ground(0,48).e('start',2,10).e('sign',4,10,{txt:'jumper'}).blk(8,7,'nad').e('sign',11,10,{txt:'nad'}).frags(13,17,10).e('jumper',22,10).frags(25,28,10);
+    // hidden staircase: coins hang in the air where the platforms are
+    L.e('sign',29,10,{txt:'hidden'}).hid(32,35,8).frags(32,35,7).hid(37,40,6).frags(37,40,5).hid(42,45,4).frags(42,45,3).e('jumper',44,10);
+    // first crossing: NAD bridge, or wait for the moving platform
+    L.blk(46,7,'nad').e('sign',47,10,{txt:'nadkeep'}).hid(49,53,11).e('mplat',49,8,{w:2,x2:52,spd:55}).frags(49,53,9);
+    L.ground(54,85).e('cp',56,10).e('vplat',59,10,{w:2,y2:4,spd:50}).plat(62,74,3).frags(63,73,2);
+    L.blk(64,7,'ngfw').e('jumper',68,10).e('scanner',72,6,{l:66,r:80}).e('jumper',79,10).frags(76,82,10);
+    L.gap(86,88).ground(89,125).solid(92,94,9,10).frags(92,94,8).solid(95,97,7,10).frags(95,97,6).e('coffee',99,10).blk(101,7,'nad').e('jumper',104,10);
+    L.blk(107,7,'ngfw').e('scanner',110,5,{l:105,r:116}).e('cp',112,10);
+    // secret: hidden stairs up to the disk
+    L.hid(114,117,8).frags(114,117,7).hid(119,122,6).frags(119,122,5).hid(123,125,3).e('disk',125,2).frags(123,124,2);
+    L.blk(111,7,'nad');
+    L.hid(126,131,11).e('mplat',126,9,{w:2,x2:129,spd:65}).frags(126,131,9);
+    L.ground(132,185).e('cp',135,10).blk(137,7,'nad').e('jumper',141,10).frags(143,147,10).e('jumper',151,10);
+    L.blk(153,7,'ngfw').e('scanner',158,5,{l:153,r:164}).plat(160,163,8).frags(160,163,7).e('jumper',167,10);
+    L.frags(170,176,10).e('exit',181,10);
+  }else if(id==='3-3'){
+    L=new LB(184);L.name='Тёмная сеть';L.theme='netdark';L.song='night';L.dark=true;
+    L.ground(0,26).e('start',2,10).e('sign',4,10,{txt:'dark'}).blk(8,7,'siem').e('sign',12,10,{txt:'darkmix'}).frags(13,16,10).e('ram',23,10);
+    L.gap(27,28).ground(29,61).blk(32,7,'nad').e('jumper',38,10).plat(41,44,8).frags(41,44,7);
+    L.hid(46,49,6).frags(46,49,5).hid(51,54,4).frags(51,53,3).e('disk',54,3);
+    L.blk(50,7,'siem').e('ram',55,10).e('cp',57,10);
+    L.e('audit',60,10,{to:69}).crack(62,68,GROUND).frags(62,68,9);
+    L.ground(69,98).blk(71,7,'nad').e('jumper',75,10).blk(80,7,'ngfw').e('scanner',84,5,{l:78,r:90}).solid(86,87,9,10).frags(86,87,8).blk(90,7,'siem').e('ram',95,10);
+    L.gap(99,100).ground(101,111).e('cp',103,10).e('coffee',105,10).blk(108,7,'nad').e('sign',107,10,{txt:'nadkeep'});
+    L.hid(112,117,11).e('mplat',112,9,{w:2,x2:115,spd:55}).frags(112,117,9);
+    L.ground(118,183).e('jumper',124,10).blk(127,7,'siem').e('ram',132,10).blk(136,7,'ngfw').e('scanner',140,5,{l:134,r:146}).e('cp',146,10);
+    L.e('audit',148,10,{to:160}).crack(150,159,GROUND).frags(150,159,9);
+    L.blk(164,7,'siem').e('ram',168,10).frags(172,177,10).e('exit',179,10);
+  }else if(id==='4-1'){
+    L=new LB(182);L.name='Серверные стойки';L.theme='server';L.song='server';
+    L.ground(0,62).e('start',2,10).e('sign',4,10,{txt:'locker'}).blk(8,7,'edr').e('sign',11,10,{txt:'edr'}).frags(13,16,10).e('locker',22,10,{l:18,r:28});
+    // low corridor between racks: a lock cannot be jumped here
+    L.blk(29,7,'edr').e('sign',30,10,{txt:'lowroom'}).ceil(32,44,8).frags(33,43,10).e('locker',40,10,{l:34,r:43});
+    // steps over a sealed server room; its door is locked by the encryptor
+    L.solid(47,48,8,10).frags(47,48,7).e('sign',45,10,{txt:'edrwall'});
+    L.solid(51,61,6,6).solid(51,51,7,8).lockw(51,9,10).solid(61,61,7,10).frags(51,60,5).frags(53,59,10).e('disk',57,10);
+    L.e('cp',64,10).ground(63,100).e('vplat',67,10,{w:2,y2:5,spd:50});
+    // two floors: rack tops above, service passage below
+    L.solid(70,94,6,6).frags(71,93,5).e('locker',86,5,{l:78,r:93});
+    L.blk(74,7,'edr').frags(73,77,10).e('locker',80,10,{l:72,r:93}).e('coffee',89,10);
+    L.gap(101,103).ground(104,140).e('cp',106,10).blk(107,7,'ngfw');
+    L.solid(110,112,9,10).frags(110,112,8).solid(113,115,7,10).frags(113,115,6).solid(116,118,9,10).frags(116,118,8).e('scanner',114,3,{l:108,r:120});
+    L.blk(122,7,'edr').e('locker',127,10,{l:121,r:134}).plat(129,132,8).frags(129,132,7).ceil(135,139,8).frags(135,139,10);
+    L.gap(141,143).ground(144,181).e('cp',146,10).blk(150,7,'edr').e('locker',155,10,{l:150,r:160}).solid(158,159,9,10).frags(158,159,8);
+    L.blk(162,7,'edr').e('locker',167,10,{l:162,r:172}).frags(163,166,10).frags(171,175,10).e('exit',177,10);
+  }else if(id==='4-2'){
+    L=new LB(186);L.name='Админка';L.theme='server';L.song='server';
+    L.ground(0,70).e('start',2,10).e('sign',4,10,{txt:'admin'}).blk(8,7,'pam').e('sign',11,10,{txt:'pam'}).frags(13,16,10).e('admin',22,10,{l:18,r:28});
+    // sealed admin vault: the gate opens only in PAM mode
+    L.blk(27,7,'pam').e('sign',29,10,{txt:'gate'}).solid(32,33,8,10).frags(32,33,7);
+    L.solid(35,45,6,6).solid(35,35,7,8).gate(35,9,10).solid(45,45,7,10).frags(35,44,5).frags(37,43,10).e('disk',42,10);
+    L.e('cp',48,10).e('admin',54,10,{l:49,r:58});
+    L.blk(57,7,'pam').e('sign',58,10,{txt:'pamdash'}).blk(60,7,'waf').e('injector',63,10).e('injector',67,10).frags(61,69,10);
+    L.gap(71,73).ground(74,110).e('vplat',76,10,{w:2,y2:5,spd:50});
+    // upper deck is free; the passage below is behind an admin gate
+    L.solid(79,104,6,6).frags(80,103,5).e('admin',95,5,{l:88,r:103});
+    L.blk(83,7,'pam').frags(82,90,10).gate(92,7,10).frags(93,103,10).e('coffee',100,10);
+    L.e('cp',107,10);
+    L.gap(111,113).ground(114,150).blk(117,7,'nad').e('jumper',122,10).plat(125,128,8).frags(125,128,7).plat(130,133,6).frags(130,133,5);
+    L.blk(135,7,'pam').e('admin',139,10,{l:134,r:144}).blk(141,7,'edr').e('locker',147,10,{l:143,r:150});
+    L.gap(151,152).ground(153,185).e('cp',155,10).set(159,GROUND,9).plat(160,166,4).frags(160,166,3);
+    L.blk(168,7,'pam').e('admin',172,10,{l:167,r:177}).frags(170,177,10).e('exit',181,10);
+  }else if(id==='4-3'){
+    L=new LB(172);L.name='Шифрование';L.theme='cold';L.song='server';L.auto=70;
+    L.ground(0,22).e('start',4,10).e('sign',7,10,{txt:'lockwave'}).blk(12,7,'edr').frags(14,18,10);
+    L.gap(23,24).ground(25,44).plat(28,31,8).frags(28,31,7).blk(34,7,'edr').e('locker',38,10,{l:35,r:43});
+    L.gap(45,47).ground(48,52).gap(53,54).ground(55,74).set(58,GROUND,9).plat(59,63,5).frags(59,62,4).e('disk',63,4).blk(65,7,'pam').e('cp',67,10).e('admin',71,10,{l:68,r:74});
+    L.gap(75,77).ground(78,104).blk(81,7,'edr').e('locker',87,10,{l:83,r:92}).solid(93,95,9,10).frags(93,95,8).solid(96,98,7,10).frags(96,98,6).frags(100,103,10);
+    L.ground(105,109).e('cp',106,10).gap(110,112).ground(113,140).e('coffee',115,10).blk(117,7,'pam').e('admin',124,10,{l:119,r:130}).blk(128,7,'edr').e('locker',135,10,{l:131,r:139});
+    L.gap(141,143).ground(144,171).frags(150,158,10).e('exit',166,10);
+  }else if(id==='5-1'){
+    L=new LB(182);L.name='Облака';L.theme='cloud';L.song='cloud';
+    L.ground(0,30).e('start',2,10).e('sign',4,10,{txt:'mimic'}).blk(8,7,'cs').e('sign',11,10,{txt:'cs'}).frags(13,16,10);
+    L.crate(19,10).crate(21,10).e('mimic',23,10).crate(26,10).frags(19,21,9).frags(26,27,9);
+    L.e('sign',29,10,{txt:'sky'}).plat(33,36,9).frags(33,36,8).plat(39,42,8).frags(39,42,7);
+    L.ground(45,76).blk(46,7,'cs').e('sign',47,10,{txt:'crates'}).e('mimic',49,10).crate(51,10).crate(52,10).crate(52,9).crate(53,10).crate(53,9).crate(53,8);
+    L.frags(51,53,7).plat(56,60,5).frags(56,60,4).e('cp',62,10);
+    L.set(65,GROUND,9).plat(66,71,3).frags(66,71,2).plat(73,75,2).e('disk',75,1);
+    L.e('mplat',77,10,{w:2,x2:80,spd:60}).frags(78,81,7);
+    L.ground(83,115).blk(85,7,'cs').crate(88,10).e('mimic',90,10).crate(92,10).crate(93,10).crate(93,9).frags(92,93,8).e('mimic',96,10);
+    L.e('coffee',98,10).plat(100,103,8).frags(100,103,7).plat(106,109,6).frags(106,109,5).e('cp',112,10);
+    L.plat(118,121,9).frags(118,121,8).plat(124,127,8).frags(124,127,7).e('mplat',130,8,{w:2,x2:134,spd:60}).frags(131,135,5).plat(138,141,9).frags(138,141,8);
+    L.ground(144,181).e('cp',146,10).blk(148,7,'cs').e('mimic',150,10).crate(152,10).crate(153,10).crate(153,9).frags(152,153,8);
+    L.set(158,GROUND,9).plat(159,164,4).frags(159,164,3).e('mimic',168,10).frags(170,174,10).e('exit',177,10);
+  }else if(id==='5-2'){
+    L=new LB(184);L.name='Реестр образов';L.theme='cloud';L.song='cloud';
+    L.ground(0,30).e('start',2,10).e('sign',4,10,{txt:'drip'}).blk(8,7,'dlp').e('sign',11,10,{txt:'dlp'}).frags(13,16,10);
+    L.e('sign',16,10,{txt:'pipes'}).pipe(18,27,4).e('drip',22,5).frags(18,27,10);
+    L.gap(31,32).ground(33,62).blk(35,7,'cs').e('mimic',40,10).crate(42,10).crate(43,10).crate(43,9).frags(42,43,8);
+    L.blk(45,7,'dlp').pipe(47,57,4).e('drip',49,5).e('drip',55,5).frags(47,57,10).e('cp',60,10);
+    L.ground(63,82).e('vplat',64,10,{w:2,y2:4,spd:50}).plat(67,80,3).frags(68,79,2);
+    L.blk(67,7,'cs').e('mimic',70,10).crate(73,10).e('mimic',76,10).frags(74,75,10).frags(78,80,10);
+    L.gap(83,85).ground(86,120).blk(88,7,'dlp').pipe(90,104,4).e('drip',92,5).e('drip',97,5).e('drip',102,5).frags(90,104,10).e('coffee',106,10).e('cp',108,10);
+    // crate stairs up to a high pipe with the disk
+    L.crate(110,10).crate(111,10).crate(111,9).crate(112,10).crate(112,9).crate(112,8).pipe(114,119,5).frags(114,118,4).e('disk',119,4);
+    L.gap(121,123).ground(124,183).blk(126,7,'cs').crate(128,10).e('mimic',130,10).frags(132,135,10);
+    L.blk(137,7,'edr').e('locker',142,10,{l:137,r:148}).e('cp',146,10);
+    L.blk(148,7,'dlp').pipe(150,162,4).e('drip',153,5).e('drip',159,5).frags(150,162,10).frags(166,172,10).e('exit',179,10);
+  }else if(id==='5-3'){
+    L=new LB(184);L.name='Над пропастью';L.theme='cloud';L.song='cloud';
+    L.ground(0,20).e('start',2,10).e('sign',4,10,{txt:'sky'}).blk(8,7,'cs').blk(12,7,'dlp').frags(14,18,10);
+    L.e('mplat',21,10,{w:2,x2:25,spd:60}).frags(22,26,7).plat(29,32,9).frags(29,32,8).e('mplat',34,9,{w:2,x2:38,spd:65}).frags(35,39,6);
+    L.ground(41,61).crate(44,10).e('mimic',46,10).crate(49,10).pipe(50,58,4).e('drip',54,5).frags(50,58,10).e('cp',60,10);
+    L.e('vplat',62,10,{w:2,y2:3,spd:55}).plat(65,70,3).frags(65,70,2).plat(73,77,4).frags(73,77,3);
+    L.ground(78,100).blk(82,7,'ngfw').e('coffee',84,10).e('scanner',88,5,{l:82,r:94}).blk(91,7,'cs').crate(94,10).e('mimic',96,10).e('cp',99,10);
+    L.plat(103,105,9).frags(103,105,8).e('mplat',108,9,{w:2,x2:112,spd:70}).frags(109,113,6).plat(116,118,8).frags(116,118,7).plat(121,123,6).frags(121,123,5);
+    L.plat(124,126,3).frags(124,125,2).e('disk',126,2).plat(126,129,9).frags(126,129,8);
+    L.ground(132,150).blk(134,7,'dlp').pipe(136,146,4).e('drip',139,5).e('drip',144,5).frags(136,146,10).e('cp',148,10);
+    L.e('mplat',151,10,{w:2,x2:155,spd:60}).frags(152,156,7).ground(159,183).blk(160,7,'cs').crate(163,10).e('mimic',165,10).crate(167,10).crate(167,9).frags(167,167,8);
+    L.frags(170,176,10).e('exit',179,10);
+  }else if(id==='6-1'){
+    L=new LB(190);L.name='Ворота цитадели';L.theme='citadel';L.song='citadel';
+    L.ground(0,26).e('start',2,10).e('sign',4,10,{txt:'citadel'}).blk(8,7,'idm').frags(10,13,10).e('phisher',18,10,{l:14,r:24});
+    L.gap(27,28).ground(29,62).blk(31,7,'waf').e('injector',37,10).plat(39,42,8).frags(39,42,7).e('injector',44,10).blk(47,7,'siem').e('ram',54,10).frags(48,52,10).e('cp',58,10);
+    L.e('audit',61,10,{to:72}).crack(63,71,GROUND).frags(63,71,9);
+    L.ground(72,100).blk(75,7,'ngfw').e('scanner',80,5,{l:74,r:86}).blk(88,7,'nad').e('jumper',92,10);
+    L.hid(93,96,8).frags(93,96,7).hid(98,100,6).frags(98,99,5).e('disk',100,5);
+    L.gap(101,102).ground(103,140).e('cp',105,10).blk(108,7,'edr').e('locker',114,10,{l:110,r:120}).e('coffee',118,10).blk(122,7,'pam').e('admin',128,10,{l:124,r:134}).frags(129,138,10);
+    L.gap(141,143).ground(144,189).e('cp',146,10).blk(149,7,'cs').crate(152,10).e('mimic',154,10).crate(156,10).crate(156,9).frags(156,156,8);
+    L.blk(160,7,'web').e('swarm',166,6,{n:5}).blk(170,7,'dlp').pipe(172,180,4).e('drip',176,5).frags(172,180,10).frags(181,183,10).e('exit',185,10);
+  }else if(id==='6-2'){
+    L=new LB(190);L.name='Даркнет';L.theme='citadel';L.song='citadel';
+    L.ground(0,30).e('start',2,10).e('sign',4,10,{txt:'darknet'}).blk(8,7,'web').frags(10,14,10).e('swarm',20,6,{n:5}).blk(24,7,'pam').e('admin',28,10,{l:25,r:30});
+    L.gap(31,33).ground(34,64).set(38,GROUND,9).plat(39,44,4).frags(39,44,3).plat(47,52,4).frags(47,52,3).plat(55,60,4).frags(55,60,3);
+    L.blk(42,7,'nad').e('jumper',46,10).e('jumper',56,10).e('cp',63,10);
+    L.ground(65,95).e('vplat',66,10,{w:2,y2:5,spd:50}).solid(69,90,6,6).frags(70,89,5).e('admin',84,5,{l:76,r:90});
+    L.blk(71,7,'pam').gate(74,7,10).frags(75,89,10).e('coffee',86,10);
+    L.gap(96,98).ground(99,137).blk(101,7,'cs').crate(105,10).e('mimic',107,10).crate(109,10).blk(112,7,'dlp').pipe(114,124,4).e('drip',117,5).e('drip',122,5).frags(114,124,10).e('cp',126,10);
+    L.blk(128,7,'nad').hid(129,132,8).frags(129,132,7).hid(134,136,6).frags(134,135,5).e('disk',136,5);
+    L.gap(138,140).ground(141,189).blk(146,7,'web').e('swarm',150,6,{n:6}).e('cp',152,10).blk(155,7,'ngfw').e('scanner',160,5,{l:154,r:166});
+    L.blk(168,7,'siem').e('ram',172,10).frags(176,182,10).e('exit',185,10);
+  }else if(id==='6-3'){
+    L=new LB(186);L.name='Лабиринт уязвимостей';L.theme='citadel';L.song='night';L.dark=true;
+    L.ground(0,23).e('start',2,10).e('sign',4,10,{txt:'lab'}).blk(8,7,'siem').frags(10,14,10).e('ram',19,10);
+    L.ground(23,60).e('audit',24,10,{to:36}).crack(26,35,GROUND).frags(26,35,9).plat(27,30,8).plat(32,35,8).frags(27,35,7);
+    L.blk(40,7,'nad').e('jumper',44,10).blk(47,7,'ngfw').e('scanner',52,5,{l:46,r:58}).e('cp',58,10);
+    L.ground(60,95).e('vplat',61,10,{w:2,y2:5,spd:50}).solid(64,86,6,6).frags(65,85,5).blk(70,2,'edr').e('locker',78,5,{l:68,r:85});
+    L.e('audit',63,10,{to:80}).crack(65,79,GROUND).frags(66,78,9).e('cp',90,10);
+    L.gap(96,97).ground(98,131).blk(101,7,'idm').e('phisher',105,10,{l:100,r:110}).e('coffee',112,10).blk(114,7,'siem').e('ram',118,10);
+    L.blk(119,7,'nad').hid(120,123,8).frags(120,123,7).hid(125,128,6).frags(125,127,5).e('disk',128,5);
+    L.e('cp',129,10).ground(131,165).e('audit',132,10,{to:150}).crack(134,149,GROUND).frags(134,149,9).blk(131,7,'ngfw').e('scanner',142,5,{l:136,r:148});
+    L.ground(150,185).blk(153,7,'edr').e('locker',158,10,{l:153,r:163}).blk(165,7,'pam').e('admin',170,10,{l:165,r:175}).frags(176,180,10).e('exit',182,10);
+  }
+  return L||null;
+}
+
 function buildLevel3(id){
+  var NL=buildLevelNew(id);if(NL)return NL;
   var C3={
     '3-1':{w:176,name:'Коммутатор',theme:'net',song:'net',signs:['scanner','ngfw'],intro:['ngfw'],segs:['flat','flat','gap','plats','steps','flat','mplat'],foes:[{t:'scanner',sol:'ngfw'},{t:'scanner',sol:'ngfw'},{t:'phisher',sol:'idm'}]},
     '3-2':{w:184,name:'Магистраль',theme:'net',song:'net',signs:['jumper','nad'],intro:['nad','ngfw'],segs:['flat','flat','gap','mplat','lift','hidden','plats','steps'],foes:[{t:'jumper',sol:'nad'},{t:'scanner',sol:'ngfw'},{t:'jumper',sol:'nad'},{t:'ram',sol:'siem'}]},
@@ -1407,6 +1597,7 @@ function buildLevel3(id){
 FOES.scanner=1;FOES.jumper=1;FOES.locker=1;FOES.admin=1;FOES.mimic=1;FOES.drip=1;
 function spawnFoe3(d,i,e){
   var t=d.type;
+  if(t==='gate'||t==='lockw'){var gc=t==='gate'?12:11;for(var gy=d.ty;gy<=d.y2;gy++){LV.setT(d.tx,gy,gc);tempTiles[d.tx+','+gy]={t:1e9,c:gc};}e.alive=false;return true;}
   if(t==='scanner'){e.w=26;e.h=16;e.x=d.tx*TS;e.y=d.ty*TS+6;e.th='scan';e.l=(d.l!=null?d.l:d.tx-4)*TS;e.r=((d.r!=null?d.r:d.tx+4)+1)*TS;e.dir=1;e.cd=1;e.stun=0;e.state='patrol';e.fly=true;return true;}
   if(t==='jumper'){e.w=20;e.h=28;e.x=d.tx*TS+6;e.y=(d.ty+1)*TS-28;e.th='lateral';e.cd=2;e.stun=0;e.state='idle';return true;}
   if(t==='locker'){e.w=24;e.h=26;e.x=d.tx*TS+4;e.y=(d.ty+1)*TS-26;e.th='ransom';e.vx=0;e.dir=-1;e.cd=2;e.stun=0;e.state='walk';e.l=(d.l!=null?d.l:d.tx-4)*TS;e.r=((d.r!=null?d.r:d.tx+4)+1)*TS;return true;}
@@ -2621,7 +2812,7 @@ function runScenes(list,done,song){
   var b=document.createElement('button');b.className='skip';b.id='skipbtn';b.type='button';b.textContent='Пропустить ›';
   b.addEventListener('click',function(e){e.stopPropagation();endScenes();});$('wrap').appendChild(b);syncBack();
 }
-function endScenes(){if(!scene)return;var d=scene.done;scene=null;var b=$('skipbtn');if(b)b.remove();state='menu';d&&d();}
+function endScenes(){if(!scene)return;var d=scene.done;scene=null;var b=$('skipbtn');if(b)b.remove();state='menu';if(d){try{d();}catch(err){try{localStorage.setItem('pquest-lasterr','after scenes: '+String(err&&err.message||err));}catch(e){}showMap();}}}
 function updateScenes(dt){
   if(!scene)return;scene.t+=dt;
   if(introSkipReq){introSkipReq=0;if(scene.t>.6){scene.i++;scene.t=0;}}
@@ -2760,7 +2951,16 @@ $('ov').addEventListener('click',function(){audioUnlock();});
 
 // ---------- main loop ----------
 var lastT=performance.now(),acc=0,STEP=1/120;
-function frame(now){
+var frameErrs=0,frameErrShown=0;
+function onFrameError(err){
+  frameErrs++;var msg=String(err&&err.message||err).slice(0,140),where=String(err&&err.stack||'').split('\n')[1]||'';
+  try{localStorage.setItem('pquest-lasterr',msg+' @ '+where.trim().slice(0,120)+' · state='+state);}catch(e){}
+  if(state==='intro'){try{endScenes();}catch(e2){scene=null;state='menu';try{showMap();}catch(e3){}}}
+  if(performance.now()-frameErrShown>8000){frameErrShown=performance.now();try{var d=document.getElementById('errnote');if(!d){d=document.createElement('div');d.id='errnote';d.style.cssText='position:fixed;left:8px;bottom:8px;z-index:99;max-width:70vw;font:600 10px/1.3 Manrope,Arial,sans-serif;color:#ffb3bb;background:rgba(5,10,28,.85);border:1px solid #ff4d5e;border-radius:6px;padding:4px 6px;pointer-events:none';document.body.appendChild(d);}
+    d.textContent='Сбой отрисовки: '+msg;d.hidden=false;setTimeout(function(){d.hidden=true;},7000);}catch(e){}}
+}
+function frame(now){requestAnimationFrame(frame);try{frameInner(now);}catch(err){onFrameError(err);try{ctx.setTransform(1,0,0,1,0,0);ctx.globalAlpha=1;}catch(e){}}}
+function frameInner(now){
   var dt=Math.min(.1,(now-lastT)/1000);lastT=now;
   readInput();
   if(PR.p){PR.p=0;if(state==='play')pauseGame();else if(state==='pause')resumeGame();}
@@ -2776,7 +2976,6 @@ function frame(now){
   else if(LV&&(state==='play'||state==='pause'||state==='clear'||state==='over')){drawWorld();drawHUD();}
   else drawMenuBg(dt);
   present();
-  requestAnimationFrame(frame);
 }
 function boot(){
   initWorld2();initWorld3();
