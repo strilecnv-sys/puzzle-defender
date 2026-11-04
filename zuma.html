@@ -10,7 +10,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Manrope:wght@400;600;700;800&family=JetBrains+Mono:wght@500&display=swap">
 <style>
-/* Layout (phone, Telegram Mini App): one screen, no page scroll. Top bar with stats and buttons, perimeter meter, the square field with the spiral track, one-line hint about the most urgent threat. Reference opens as a bottom sheet. */
+/* Layout (phone, Telegram Mini App): one screen, no page scroll. Top bar with stats and buttons, perimeter meter, the square field with the round spiral track around the shooter, one-line hint about the most urgent threat. Reference opens as a bottom sheet. */
 :root{
   --bg:#0a1230;--surface:#101a40;--surface2:#16245a;--line:#22306a;--fg:#eef2ff;--muted:#93a0cf;
   --threat:#ff8f0c;--good:#affb33;--core:#2176ff;
@@ -141,7 +141,7 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 </div>
 <script>(function(){
   var MOBILE=true;
-  var W=MOBILE?420:480,H=W,WAVES=12;
+  var W=MOBILE?380:480,H=W,WAVES=12;
   var C={navy:'#0a1230',ink:'#eef2ff',muted:'#93a0cf',lime:'#AFFB33',orange:'#FF8F0C',blue:'#2176FF',deep:'#13204d',surf:'#101a40',boss:'#F472D0',enc:'#5b6690'};
   var SITE='https://puzzle.systems/';
   var tg=(window.Telegram&&window.Telegram.WebApp)||null;
@@ -154,7 +154,6 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 
   // ---------- Telegram ----------
   function T(fn){try{if(tg)fn(tg);}catch(e){}}
-  function goHome(){location.href='index.html';}
   if(MOBILE)T(function(t){t.ready();t.expand();if(t.disableVerticalSwipes)t.disableVerticalSwipes();if(t.setHeaderColor)t.setHeaderColor('#0a1230');if(t.setBackgroundColor)t.setBackgroundColor('#0a1230');if(t.setBottomBarColor)t.setBottomBarColor('#0a1230');});
   function haptic(kind){if(!MOBILE)return;T(function(t){if(!t.HapticFeedback)return;if(kind==='hit')t.HapticFeedback.impactOccurred('heavy');else if(kind==='ok')t.HapticFeedback.notificationOccurred('success');else if(kind==='bad')t.HapticFeedback.notificationOccurred('error');else t.HapticFeedback.impactOccurred('light');});}
   document.addEventListener('click',function(e){var a=e.target.closest&&e.target.closest('a.site');if(a&&tg&&tg.openLink&&MOBILE){e.preventDefault();try{tg.openLink(SITE);}catch(x){window.open(SITE,'_blank');}}});
@@ -272,21 +271,33 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 
   // ---------- path ----------
   // Phone: bigger balls and a taller oval spiral that uses the whole screen height, so labels are readable.
-  var CX=W/2,CY=H/2,TURNS=1.8,D=MOBILE?36:26,BR=MOBILE?18:13,SR=MOBILE?36:30,SPD=D/26,LENK=1;
+  var CX=W/2,CY=H/2,TURNS=1.8,D=MOBILE?32:26,BR=MOBILE?16:13,SR=MOBILE?32:30,SPD=D/26,LENK=1;
   var PATH=[],PLEN=0;
   function buildPath(){
     CX=W/2;CY=H/2;
-    var r0x=MOBILE?W/2-24:218,r1x=MOBILE?W*.2:92,r0y=MOBILE?H/2-28:218,r1y=MOBILE?Math.max(r1x,H*.2):92;
-    var steps=1200,prev=null,acc=0;PATH=[];
-    for(var i=0;i<=steps;i++){
-      var u=i/steps,a=-Math.PI/2+u*TURNS*2*Math.PI;
-      var p={x:CX+Math.cos(a)*(r0x+(r1x-r0x)*u),y:CY+Math.sin(a)*(r0y+(r1y-r0y)*u)};
-      if(prev)acc+=Math.hypot(p.x-prev.x,p.y-prev.y);
-      p.s=acc;PATH.push(p);prev=p;
+    var steps=2400,prev=null,acc=0;PATH=[];
+    if(MOBILE){
+      // Phone: the classic round track around the shooter, scaled to the full screen width with bigger balls.
+      TURNS=2;var r0=W/2-20,r1=78;
+      for(var i=0;i<=steps;i++){
+        var u=i/steps,a=-Math.PI/2+u*TURNS*2*Math.PI,r=r0+(r1-r0)*u;
+        var p={x:CX+Math.cos(a)*r,y:CY+Math.sin(a)*r};
+        if(prev)acc+=Math.hypot(p.x-prev.x,p.y-prev.y);
+        p.s=acc;PATH.push(p);prev=p;
+      }
+    }else{
+      for(var j=0;j<=steps;j++){
+        var u2=j/steps,a2=-Math.PI/2+u2*TURNS*2*Math.PI,r=218+(92-218)*u2;
+        var q={x:CX+Math.cos(a2)*r,y:CY+Math.sin(a2)*r};
+        if(prev)acc+=Math.hypot(q.x-prev.x,q.y-prev.y);
+        q.s=acc;PATH.push(q);prev=q;
+      }
     }
     PLEN=acc;
     // keep the chain length in balls proportional to how many balls fit on the track (desktop track holds ~67)
-    LENK=Math.max(.8,Math.min(1,(PLEN/D)/67.6));
+    LENK=Math.max(.6,Math.min(1,(PLEN/D)/67.6));
+    // keep the time a ball needs to reach the core the same as on desktop
+    SPD=MOBILE?PLEN/1758*1.15:1;
   }
   buildPath();
   function posAt(s){
@@ -558,7 +569,7 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
     ctx.strokeStyle=danger?C.orange:C.blue;ctx.lineWidth=danger?3+Math.sin(clock*12)*1.5:2;ctx.beginPath();ctx.arc(ep.x,ep.y,18,0,6.2832);ctx.stroke();
     if(coreOk)ctx.drawImage(coreImg,ep.x-12,ep.y-12,24,24);
     // entry marker
-    var sp0=PATH[0];ctx.font='500 11px "JetBrains Mono",monospace';ctx.fillStyle=C.muted;ctx.textAlign='left';ctx.textBaseline='alphabetic';ctx.fillText('ВХОД',sp0.x+14,sp0.y+4);
+    var sp0=PATH[0];ctx.font='500 11px "JetBrains Mono",monospace';ctx.fillStyle=C.muted;ctx.textAlign='left';ctx.textBaseline='alphabetic';ctx.fillText('ВХОД',sp0.x+14+(MOBILE?6:0),sp0.y+4);
     if(state!=='menu'){
       for(i=chain.length-1;i>=0;i--){var b=chain[i];if(b.s<=0)continue;var p=posAt(b.s);drawBall(b,p.x,p.y,b.boss?BR+3:BR);}
       for(i=0;i<shots.length;i++){var s=shots[i];drawSolBall(s.s,s.x,s.y,BR);}
@@ -676,10 +687,9 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
       '<p>Решение того же цвета, что и угроза, — её пара. Когда <b>три и больше шаров одного цвета</b> оказываются рядом, они сгорают. Каждый шар, докатившийся до ядра, бьёт по периметру.</p>'+
       '<p>'+(MOBILE?'Прицельтесь пальцем и отпустите, чтобы выстрелить. Нажмите на стрелка, чтобы поменять решение.':'Целитесь мышью, стреляйте кликом. Правая кнопка или пробел — поменять решение.')+' Продержитесь <b>12 волн</b>.</p>'+
       (best?'<p>Рекорд: <b>'+best+'</b></p>':'')+
-      '<div class="acts"><button class="btn" id="go" type="button">Начать игру</button>'+(MOBILE?'<button class="btn ghost" id="menuhelp" type="button">Справочник решений и угроз</button>':'')+'<button class="btn ghost" id="allgames" type="button">← Все игры</button></div>';
+      '<div class="acts"><button class="btn" id="go" type="button">Начать игру</button>'+(MOBILE?'<button class="btn ghost" id="menuhelp" type="button">Справочник решений и угроз</button>':'')+'</div>';
     showOverlay(h,true);
     $('go').addEventListener('click',start);
-    $('allgames').addEventListener('click',goHome);
     if($('menuhelp'))$('menuhelp').addEventListener('click',function(){openSheet('sol');});
     renderPanels();syncBack();
   }
@@ -742,8 +752,8 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
     $('again').addEventListener('click',start);$('tomenu').addEventListener('click',showMenu);
     syncBack();
   }
-  function syncBack(){if(!MOBILE)return;T(function(t){if(!t.BackButton)return;var show=true;if(show)t.BackButton.show();else t.BackButton.hide();});}
-  if(MOBILE)T(function(t){if(t.BackButton)t.BackButton.onClick(function(){if(sheetOpen)closeSheet();else if(state==='play')pauseGame();else if(state==='pause')resumeGame();else goHome();});});
+  function syncBack(){if(!MOBILE)return;T(function(t){if(!t.BackButton)return;var show=sheetOpen||state==='play'||state==='pause';if(show)t.BackButton.show();else t.BackButton.hide();});}
+  if(MOBILE)T(function(t){if(t.BackButton)t.BackButton.onClick(function(){if(sheetOpen)closeSheet();else if(state==='play')pauseGame();else if(state==='pause')resumeGame();});});
 
   document.addEventListener('keydown',function(e){
     var k=e.key,isP=k==='p'||k==='P'||k==='з'||k==='З';
@@ -761,7 +771,7 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
     if(MOBILE){var h=window.innerHeight;if(tg&&tg.viewportStableHeight)h=Math.max(300,tg.viewportStableHeight);document.documentElement.style.setProperty('--app-h',h+'px');}
     var sw=st.clientWidth,sh=st.clientHeight;
     if(MOBILE&&state!=='play'&&state!=='pause'){
-      var nh=Math.round(Math.max(W,Math.min(W*1.9,W*sh/Math.max(1,sw))));
+      var nh=W;
       if(nh!==H){H=nh;buildPath();setCanvas();aim={x:CX,y:CY-100};}
     }
     var w=sw,hh=w*H/W;if(hh>sh){hh=sh;w=hh*W/H;}
@@ -786,9 +796,10 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
   if(document.fonts&&document.fonts.ready)document.fonts.ready.then(fit);
   setTimeout(fit,300);
   last=performance.now();
-  function frame(now){var dt=Math.min(.1,(now-last)/1000);last=now;update(dt);draw();hud();requestAnimationFrame(frame);}
+  var panelT=0;
+  function frame(now){var dt=Math.min(.1,(now-last)/1000);last=now;panelT-=dt;if(panelT<=0){panelT=.25;if(state==='play')renderPanels();}update(dt);draw();hud();requestAnimationFrame(frame);}
   requestAnimationFrame(frame);
-  window.__zu={get:function(){return{result:result,state:state,wave:wave,score:score,integrity:integrity,chain:chain.length,boss:!!boss,neutral:stats?stats.neutral:0,spawned:stats?stats.spawned:0,miss:stats?stats.miss:{},shots:stats?stats.shots:0,hits:stats?stats.hits:0};},
+  window.__zu={shooter:function(){return{x:CX,y:CY,D:D};},get:function(){return{result:result,state:state,wave:wave,score:score,integrity:integrity,chain:chain.length,boss:!!boss,neutral:stats?stats.neutral:0,spawned:stats?stats.spawned:0,miss:stats?stats.miss:{},shots:stats?stats.shots:0,hits:stats?stats.hits:0};},
     chain:function(){return chain.map(function(b){var p=posAt(b.s);return{k:b.k,sol:b.sol,boss:b.boss,need:b.boss?b.need[b.phase]:null,s:b.s,x:p.x,y:p.y};});},
     ammo:function(){return[ammo,next];},aimFire:function(x,y){aim={x:x,y:y};fire();},swap:swapAmmo,solFor:solFor,start:start,hurt:function(v){integrity=v;},plen:function(){return PLEN;}};
 })();
