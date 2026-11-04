@@ -307,9 +307,9 @@ function readInset(name){
 function layoutTouch(){
   var ins={l:readInset('--sl'),r:readInset('--sr'),b:readInset('--sb')};
   var s=clamp(SH/390,0.82,1.25)*(SETTINGS.btn||1);
-  TC.dp.r=58*s;TC.dp.x=ins.l+24+TC.dp.r;TC.dp.y=SH-ins.b-20-TC.dp.r;
-  TC.A.r=33*s;TC.A.x=SW-ins.r-28-TC.A.r;TC.A.y=SH-ins.b-30-TC.A.r;
-  TC.B.r=29*s;TC.B.x=TC.A.x-TC.A.r-TC.B.r-16*s;TC.B.y=TC.A.y+16*s;
+  TC.dp.r=52*s;TC.dp.x=ins.l+34+TC.dp.r;TC.dp.y=SH-ins.b-30-TC.dp.r;TC.ins=ins;
+  TC.A.r=40*s;TC.A.x=SW-ins.r-26-TC.A.r;TC.A.y=SH-ins.b-34-TC.A.r;
+  TC.B.r=34*s;TC.B.x=TC.A.x-TC.A.r-TC.B.r-20*s;TC.B.y=TC.A.y+22*s;
   TC.S.r=19*s;TC.S.x=TC.B.x+6*s;TC.S.y=TC.B.y-TC.B.r-TC.S.r-14*s;
 }
 function touchUpdate(){
@@ -317,10 +317,12 @@ function touchUpdate(){
   for(var id in touches){
     var p=touches[id];
     if(p.ctl==='dp'){
-      var dx=p.x-TC.dp.x,dy=p.y-TC.dp.y,dd=TC.dp.r*.22;
-      if(dx<-dd)t.l=1;else if(dx>dd)t.r=1;
-      if(dy>dd*1.4&&Math.abs(dx)<Math.abs(dy)*1.6)t.d=1;
-      if(dy<-dd*1.6&&Math.abs(dx)<Math.abs(dy)*1.2)t.u=1;
+      var R=TC.dp.r,dx=p.x-p.ox,dy=p.y-p.oy,dist=Math.hypot(dx,dy),lim=R*1.15;
+      if(dist>lim){p.ox=p.x-dx/dist*lim;p.oy=p.y-dy/dist*lim;dx=p.x-p.ox;dy=p.y-p.oy;}
+      var dead=Math.max(9,R*.18);
+      if(dx<-dead)t.l=1;else if(dx>dead)t.r=1;
+      if(dy>R*.5&&dy>Math.abs(dx)*.75)t.d=1;
+      if(dy<-R*.55&&-dy>Math.abs(dx)*.9)t.u=1;
     }else if(p.ctl)t[p.ctl]=1;
   }
   TOUCH=t;
@@ -330,8 +332,8 @@ function hitCtl(x,y){
   if(d(TC.S)<TC.S.r+8)return 's';
   if(d(TC.A)<TC.A.r+16)return 'j';
   if(d(TC.B)<TC.B.r+14)return 'a';
-  if(x<SW*0.45&&y>SH*0.3)return 'dp';
-  if(x>SW*0.55&&y>SH*0.3){return d(TC.A)<d(TC.B)?'j':'a';}
+  if(x<SW*0.5&&y>SH*0.2)return 'dp';
+  if(x>=SW*0.5&&y>SH*0.25){return d(TC.A)<d(TC.B)?'j':'a';}
   return null;
 }
 function tpos(e){var r=cv.getBoundingClientRect();return {x:e.clientX-r.left,y:e.clientY-r.top};}
@@ -341,6 +343,7 @@ cv.addEventListener('touchstart',function(e){
   for(var i=0;i<e.changedTouches.length;i++){var c=e.changedTouches[i],p=tpos(c);
     var ctl=state==='play'?hitCtl(p.x,p.y):null;
     touches[c.identifier]={x:p.x,y:p.y,ctl:ctl};
+    if(ctl==='dp'){var R0=TC.dp.r,ii=TC.ins||{l:0,b:0};touches[c.identifier].ox=clamp(p.x,ii.l+R0+8,SW*.5-R0*.4);touches[c.identifier].oy=clamp(p.y,SH*.2+R0,SH-(ii.b||0)-R0-6);}
     if(ctl&&ctl!=='dp')haptic('light');
   }
   touchUpdate();
@@ -869,7 +872,7 @@ LB.prototype={
 };
 
 var SIGN_TXT={
-  move:MOBILE?'Крестовина — бег. Кнопка A — прыжок: держите дольше, чтобы прыгнуть выше.':'← → или A/D — бег. Пробел — прыжок: держите дольше, чтобы прыгнуть выше.',
+  move:MOBILE?'Джойстик слева — бег. Кнопка A — прыжок: держите дольше, чтобы прыгнуть выше.':'← → или A/D — бег. Пробел — прыжок: держите дольше, чтобы прыгнуть выше.',
   frags:'Собирайте кибермонеты: каждые 100 дают дополнительную жизнь.',
   block:'Серверный блок: ударьте его снизу головой — выпадет решение по ИБ.',
   phisher:MOBILE?'Фишер крадёт решения крючком. Прыжок сверху оглушит его, а IDM (кнопка B) обезвредит навсегда.':'Фишер крадёт решения крючком. Прыжок сверху оглушит его, а IDM (X) обезвредит навсегда.',
@@ -882,7 +885,7 @@ var SIGN_TXT={
   siem:MOBILE?'SIEM (кнопка B) — импульс вокруг героя: обезвреживает Таранов, остальных оглушает.':'SIEM (X) — импульс вокруг героя: обезвреживает Таранов, остальных оглушает.',
   mplat:'Платформа ездит туда-обратно — дождитесь её и прыгайте.',
   dark:'Ночью в офисе темно. Решение SIEM расширит обзор и подсветит угрозы.',
-  drop:MOBILE?'Вниз на крестовине + A — спрыгнуть со стола.':'↓ + Пробел — спрыгнуть со стола.'
+  drop:MOBILE?'Джойстик вниз + A — спрыгнуть со стола.':'↓ + Пробел — спрыгнуть со стола.'
 };
 var DISK_TXT={
   '1-1':'Длинная фраза из нескольких слов надёжнее короткого «сложного» пароля — и её легче запомнить.',
@@ -2390,11 +2393,15 @@ function drawDiskCard(k){
 }
 function drawTouch(){
   var o=.78;
-  // d-pad
-  var d=TC.dp;ctx.globalAlpha=o;ctx.fillStyle='#0a1230';circ(d.x,d.y,d.r);ctx.fill();ctx.strokeStyle='#33438a';ctx.lineWidth=2;ctx.stroke();
-  var a=d.r*.36,L=d.r*.78;ctx.fillStyle='#22306a';rr(d.x-L,d.y-a/2*1.2,L*2,a*1.2,6);ctx.fill();rr(d.x-a/2*1.2,d.y-L,a*1.2,L*2,6);ctx.fill();
-  function arrow(dx,dy,on){ctx.globalAlpha=on?.95:o+.2;ctx.fillStyle=on?C.lime:'#93a0cf';ctx.save();ctx.translate(d.x+dx*L*.68,d.y+dy*L*.68);ctx.rotate(Math.atan2(dy,dx));ctx.beginPath();ctx.moveTo(7,0);ctx.lineTo(-4,-6);ctx.lineTo(-4,6);ctx.closePath();ctx.fill();ctx.restore();}
-  arrow(-1,0,IN.l);arrow(1,0,IN.r);arrow(0,1,IN.d);arrow(0,-1,IN.u);
+  // floating joystick
+  var d=TC.dp,R=d.r,act=null;for(var tid in touches)if(touches[tid].ctl==='dp'){act=touches[tid];break;}
+  var cx=act?act.ox:d.x,cy=act?act.oy:d.y;
+  ctx.globalAlpha=act?.85:.28;ctx.fillStyle='#0a1230';circ(cx,cy,R);ctx.fill();ctx.strokeStyle=act?'#4a5cb0':'#33438a';ctx.lineWidth=2;ctx.stroke();
+  function arrow(dx,dy,on){ctx.globalAlpha=on?1:(act?.6:.35);ctx.fillStyle=on?C.lime:'#93a0cf';ctx.save();ctx.translate(cx+dx*R*.74,cy+dy*R*.74);ctx.rotate(Math.atan2(dy,dx));ctx.beginPath();ctx.moveTo(8,0);ctx.lineTo(-5,-7);ctx.lineTo(-5,7);ctx.closePath();ctx.fill();ctx.restore();}
+  arrow(-1,0,IN.l);arrow(1,0,IN.r);arrow(0,1,IN.d);if(act)arrow(0,-1,IN.u);
+  var kx=cx,ky=cy;if(act){var kdx=act.x-cx,kdy=act.y-cy,kd=Math.hypot(kdx,kdy),km=R*.62;if(kd>km){kdx=kdx/kd*km;kdy=kdy/kd*km;}kx=cx+kdx;ky=cy+kdy;}
+  ctx.globalAlpha=act?.95:.3;ctx.fillStyle=act&&(IN.l||IN.r||IN.d||IN.u)?C.lime:'#33438a';circ(kx,ky,R*.42);ctx.fill();ctx.strokeStyle='#eef2ff';ctx.globalAlpha=act?.5:.2;ctx.lineWidth=1.5;ctx.stroke();
+  if(!act&&gt<6){ctx.globalAlpha=.55*(1-gt/6);ctx.fillStyle='#eef2ff';ctx.font='700 11px Manrope,Arial';ctx.textAlign='center';ctx.fillText('коснитесь и ведите',cx,cy-R-10);}
   // A / B
   function btn(c,label,sub,col,on){ctx.globalAlpha=on?.95:o+.12;ctx.fillStyle=on?col:'#0a1230';circ(c.x,c.y,c.r);ctx.fill();ctx.strokeStyle=col;ctx.lineWidth=2.5;ctx.stroke();
     ctx.fillStyle=on?'#0a1230':col;ctx.font='800 '+Math.round(c.r*.62)+'px Unbounded,Arial';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(label,c.x,c.y+1);ctx.textBaseline='alphabetic';
@@ -2492,7 +2499,7 @@ function showHelp(tab,back){
   else if(tab==='sol'){var OS=openList('sol');h+='<div class="cards">';OS.forEach(function(k){var s=SOL[k];h+='<div class="card" style="--pc:'+solColor(k)+'"><div class="nm">'+esc(s.name)+'</div><div class="ds">'+esc(s.desc)+'</div><div class="gm">'+esc(SOL_GAME[k])+'</div></div>';});
     Object.keys(SOL_WORLD).forEach(function(k){var s=SOL[k];if(!s||OS.indexOf(k)>=0)return;h+='<div class="card off" style="--pc:#2176ff"><div class="nm">'+esc(s.name)+'</div><div class="ds">Откроется в мире '+SOL_WORLD[k]+'.</div></div>';});
     h+='<div class="card" style="--pc:#affb33"><div class="nm">Аудит информационной безопасности</div><div class="ds">Точка аудита на уровне закрывает все неисправленные уязвимости на участке — как настоящий аудит, который находит слабые места до того, как ими воспользуются злоумышленники.</div></div></div>';}
-  else{h+=MOBILE?'<div class="keys"><kbd>Крестовина</kbd><span>бег влево и вправо, вниз — присесть</span><kbd>A</kbd><span>прыжок (дольше держите — выше)</span><kbd>B</kbd><span>применить решение</span><kbd>⇄</kbd><span>переключить решение</span><kbd>Вниз + A</kbd><span>спрыгнуть со стола</span><kbd>Пауза</kbd><span>кнопка справа вверху или «Назад» Telegram</span></div>':
+  else{h+=MOBILE?'<div class="keys"><kbd>Джойстик</kbd><span>коснитесь в любом месте левой половины экрана и ведите пальцем: влево и вправо — бег, вниз — присесть</span><kbd>A</kbd><span>прыжок (дольше держите — выше)</span><kbd>B</kbd><span>применить решение</span><kbd>⇄</kbd><span>переключить решение</span><kbd>Вниз + A</kbd><span>спрыгнуть со стола</span><kbd>Пауза</kbd><span>кнопка справа вверху или «Назад» Telegram</span></div>':
     '<div class="keys"><kbd>← →</kbd><span>бег (или A / D)</span><kbd>Пробел</kbd><span>прыжок (или Z / K), дольше держите — выше</span><kbd>X</kbd><span>применить решение (или J / Shift)</span><kbd>Q</kbd><span>переключить решение (или C)</span><kbd>↓ + Пробел</kbd><span>спрыгнуть со стола</span><kbd>P / Esc</kbd><span>пауза</span><kbd>Геймпад</kbd><span>стик или крестовина, A — прыжок, X/B — решение, Y — переключить</span></div>';
     h+='<p class="small">Прыжок сверху оглушает угрозу, а навсегда её обезвреживает только подходящее решение.</p>';}
   h+='<button class="btn ghost" id="t-back" data-focus>Назад</button>';
