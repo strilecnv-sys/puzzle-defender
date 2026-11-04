@@ -154,7 +154,6 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
 
   // ---------- Telegram ----------
   function T(fn){try{if(tg)fn(tg);}catch(e){}}
-  function goHome(){location.href='index.html';}
   if(MOBILE)T(function(t){t.ready();t.expand();if(t.disableVerticalSwipes)t.disableVerticalSwipes();if(t.setHeaderColor)t.setHeaderColor('#0a1230');if(t.setBackgroundColor)t.setBackgroundColor('#0a1230');if(t.setBottomBarColor)t.setBottomBarColor('#0a1230');});
   function haptic(kind){if(!MOBILE)return;T(function(t){if(!t.HapticFeedback)return;if(kind==='hit')t.HapticFeedback.impactOccurred('heavy');else if(kind==='ok')t.HapticFeedback.notificationOccurred('success');else if(kind==='bad')t.HapticFeedback.notificationOccurred('error');else if(kind==='sel')t.HapticFeedback.selectionChanged();else t.HapticFeedback.impactOccurred('light');});}
   document.addEventListener('click',function(e){var a=e.target.closest&&e.target.closest('a.site');if(a&&tg&&tg.openLink&&MOBILE){e.preventDefault();try{tg.openLink(SITE);}catch(x){window.open(SITE,'_blank');}}});
@@ -328,11 +327,11 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
   applyBL({
     cred:{dmg:4,pts:20,trait:'Обычная угроза.'},
     sql:{dmg:4,pts:20,trait:'Идёт парой в соседних полосах. Одно решение WAF снимает обе.'},
-    brute:{dmg:3,pts:25,trait:'Летит в полтора раза быстрее остальных.'},
+    brute:{dmg:3,pts:25,trait:'Летит быстрее остальных угроз.'},
     leak:{dmg:7,pts:30,incident:true,trait:'Большой урон, если пропустить или врезаться без DLP.'},
     ddos:{dmg:2,pts:10,pack:2,trait:'Перекрывает сразу две полосы. Одно решение «Защита веб-ресурсов» снимает обе.'},
     ransom:{dmg:5,pts:30,trait:'Если врезаться без EDR, шифрует весь запас решений.'},
-    scan:{dmg:4,pts:30,trait:'Петляет между полосами, проверяя порты.'},
+    scan:{dmg:4,pts:30,trait:'Петляет между полосами, проверяя порты, и выбирает полосу перед самым подлётом.'},
     priv:{dmg:6,pts:35,trait:'Почти невидима и проявляется только вблизи.'},
     lateral:{dmg:5,pts:35,trait:'В последний момент перепрыгивает в соседнюю полосу.'},
     container:{dmg:5,pts:30,trait:'Если пропустить, следом придёт ещё одна такая же.'},
@@ -355,7 +354,7 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
   function gameDebug(){return{objs:objs.length,inv:inv.slice(),lane:player?player.lane:1,quota:quota};}
   function gameHud(set){set('dist',state!=='menu'?Math.round(dist/100)+' м':'—');}
 
-  function baseSpeed(){return 250+wave*14;}
+  function baseSpeed(){return 240+wave*12;}
   function quotaFor(n){return n===12?7:6+Math.floor(n/2);}
   function gameStart(){
     objs=[];inv=[];dist=0;hitFlash=0;queue=[];bossQ=null;
@@ -373,18 +372,25 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
   function addObj(o){o.y=-60;objs.push(o);return o;}
   function pickupFor(s,lane,dy){var o=addObj({t:'sol',s:s,lane:lane,x:laneX(lane)});o.y-=dy||0;return o;}
   function threatTypes(){var l=[];unlockedT().forEach(function(k){l.push([k,k===TORD[wave-1]?3:(k==='cred'||k==='sql'?1.3:1)]);});return l;}
+  // Timing is in seconds, not pixels: after the solution passes you there is always enough time
+  // to change lanes and meet the threat, at any speed.
+  function reactT(){return Math.max(1.1,1.55-wave*.035);}
   function spawnGroup(){
     var k=weighted(threatTypes());if(k==='vuln'&&wave<11&&Math.random()<.5)k='cred';
-    var lane=rint(3),gap=230+rint(80)-wave*6,s=solFor(k),extra=0;
-    // the solution arrives first, the threat follows `gap` pixels behind it
-    if(k==='vuln'){var u=unlockedS(),a=pick(u),b=pick(u.filter(function(x){return x!==a;}));pickupFor(a,rint(3),0);pickupFor(b,rint(3),110);extra=110;}
-    else pickupFor(s,rint(3),0);
-    if(Math.random()<.3)pickupFor(pick(unlockedS()),rint(3),70);
-    spawnThreat(k,lane,gap+extra);
+    var lane=rint(3),s=solFor(k),v=speed,extraT=0;
+    // where the solution appears: often in the threat's lane or next to it, rarely two lanes away
+    function solLane(){var r=Math.random();if(r<.4)return lane;if(r<.85||lane===1){var o=lane===1?(Math.random()<.5?0:2):1;return o;}return 2-lane;}
+    var sl=solLane();
+    if(k==='vuln'){var u=unlockedS(),a=pick(u),b=pick(u.filter(function(x){return x!==a;}));pickupFor(a,sl,0);var sl2=clamp(sl+(Math.random()<.5?-1:1),0,2);pickupFor(b,sl2,v*.6);extraT=.6+(Math.abs(sl2-lane)>1?.3:0);}
+    else{pickupFor(s,sl,0);extraT=Math.abs(sl-lane)>1?.3:0;}
+    // an extra solution now and then, in a different lane, right after the needed one
+    if(Math.random()<.3){var dl=(sl+1+rint(2))%3;pickupFor(pick(unlockedS()),dl,v*.25);}
+    spawnThreat(k,lane,(reactT()+extraT)*v);
+    return reactT()+extraT;
   }
   function spawnThreat(k,lane,dy){
-    var d={t:'thr',k:k,lane:lane,x:laneX(lane),vy:k==='brute'?1.5:1,ph:Math.random()*6,jumped:false};
-    addObj(d);d.y-=(dy||0)*(k==='brute'?1.5:1);stats.spawned++;
+    var d={t:'thr',k:k,lane:lane,x:laneX(lane),vy:k==='brute'?1.35:1,ph:Math.random()*6,jumped:false};
+    addObj(d);d.y-=(dy||0)*d.vy;stats.spawned++;
     if(k==='sql'){var l2=lane===2?1:lane+1;var e=addObj({t:'thr',k:'sql',lane:l2,x:laneX(l2),vy:1,ph:0});e.y=d.y-10;stats.spawned++;}
     if(k==='ddos'){d.span=2;d.lane=Math.min(lane,1);d.x=laneX(d.lane)+LW/2;}
   }
@@ -392,8 +398,8 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
     var pl=unlockedS().slice(),need=[];while(need.length<4&&pl.length)need.push(pl.splice(rint(pl.length),1)[0]);
     bossQ={need:need,i:0};
     for(var i=0;i<4;i++){
-      pickupFor(need[i],rint(3),260+i*420);
-      var w=addObj({t:'boss',need:need[i],idx:i});w.y-=520+i*420;
+      var T=2.4,v=speed;pickupFor(need[i],rint(3),v*(i*T));
+      var w=addObj({t:'boss',need:need[i],idx:i});w.y-=v*(i*T+reactT()+.2);
     }
     banner={title:'Целевая атака',text:'Четыре барьера во всю ширину. Для каждого нужно решение, написанное на нём: держите его в запасе.',col:C.boss,k:'boss',life:5};
     haptic('bad');
@@ -408,14 +414,14 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
     spawnT-=dt;
     if(quota>0&&spawnT<=0){
       if(wave===12&&quota===1){spawnBossWalls();quota=0;spawnT=99;}
-      else{spawnGroup();quota--;spawnT=Math.max(1.05,2.3-wave*.09);}
+      else{var gt=spawnGroup();quota--;spawnT=gt+Math.max(.85,1.5-wave*.05);}
     }
     for(i=queue.length-1;i>=0;i--){queue[i].delay+=dt;if(queue[i].delay>.9){spawnThreat(queue[i].k,queue[i].lane);queue.splice(i,1);}}
     for(i=objs.length-1;i>=0;i--){
-      o=objs[i];o.y+=speed*(o.vy||1)*dt;
+      o=objs[i];if(o.gone){objs.splice(i,1);continue;}o.y+=speed*(o.vy||1)*dt;
       if(o.t==='thr'){
-        if(o.k==='scan'){o.ph+=dt*2.2;var target=1+Math.round(Math.sin(o.ph));o.lane=target;o.x+=(laneX(target)-o.x)*Math.min(1,dt*5);}
-        if(o.k==='lateral'&&!o.jumped&&o.y>PY-190){o.jumped=true;var nl=o.lane===1?(Math.random()<.5?0:2):1;o.lane=nl;burst(o.x,o.y,TH.lateral.col,6);}
+        if(o.k==='scan'){if(o.y<PY-speed*.9)o.ph+=dt*2.2;var target=1+Math.round(Math.sin(o.ph));o.lane=target;o.x+=(laneX(target)-o.x)*Math.min(1,dt*5);}
+        if(o.k==='lateral'&&!o.jumped&&o.y>PY-speed*.8){o.jumped=true;var nl=o.lane===1?(Math.random()<.5?0:2):1;o.lane=nl;burst(o.x,o.y,TH.lateral.col,6);}
         if(o.k==='lateral')o.x+=(laneX(o.lane)-o.x)*Math.min(1,dt*12);
       }
       // collisions with player
@@ -454,7 +460,7 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
     }
     var s=solFor(k),idx=inv.indexOf(s);
     if(idx>=0){inv.splice(idx,1);neutral(k,TH[k].pts,x,y);
-      if(k==='sql'){objs.forEach(function(q){if(q!==o&&q.t==='thr'&&q.k==='sql'&&!q.done&&Math.abs(q.y-o.y)<40){q.done=true;q.gone=true;neutral('sql',TH.sql.pts,q.x,q.y);}});objs=objs.filter(function(q){return !q.gone;});}
+      if(k==='sql'){objs.forEach(function(q){if(q!==o&&q.t==='thr'&&q.k==='sql'&&!q.done&&Math.abs(q.y-o.y)<40){q.done=true;q.gone=true;neutral('sql',TH.sql.pts,q.x,q.y);}});}
       return;}
     crash(o);
   }
@@ -467,7 +473,7 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
   function passed(o){
     float(o.x,H-40,short(TH[o.k].name)+' прошла',TH[o.k].col);
     if(breach(o.k,Math.max(2,Math.round(TH[o.k].dmg*.6)),o.x,H-60))return;
-    if(o.k==='container'){pickupFor('cs',rint(3),0);spawnThreat('container',rint(3),260);}
+    if(o.k==='container'){var cl=rint(3);pickupFor('cs',clamp(cl+rint(3)-1,0,2),0);spawnThreat('container',cl,reactT()*speed);spawnT=Math.max(spawnT,reactT()+1);}
   }
 
   // ---------- draw ----------
@@ -500,6 +506,7 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
     drawFx(W,H);
   }
   function drawObj(o){
+    if(o.gone)return;
     ctx.textAlign='center';ctx.textBaseline='middle';
     if(o.t==='sol'){
       var col=scol(o.s);ctx.fillStyle=C.surf;rr(o.x-46,o.y-24,92,48,12);ctx.fill();ctx.strokeStyle=col;ctx.lineWidth=3.5;rr(o.x-46,o.y-24,92,48,12);ctx.stroke();
@@ -613,10 +620,9 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
     var lg=MOBILE?document.querySelector('.top .logo'):null;
     var h=(lg?lg.outerHTML:'')+'<h2>'+esc(GAME.title)+'</h2>'+gameMenu()+
       (best?'<p>Рекорд: <b>'+best+'</b></p>':'')+
-      '<div class="acts"><button class="btn" id="go" type="button">Начать игру</button>'+(MOBILE?'<button class="btn ghost" id="menuhelp" type="button">Справочник решений и угроз</button>':'')+'<button class="btn ghost" id="allgames" type="button">← Все игры</button></div>';
+      '<div class="acts"><button class="btn" id="go" type="button">Начать игру</button>'+(MOBILE?'<button class="btn ghost" id="menuhelp" type="button">Справочник решений и угроз</button>':'')+'</div>';
     showOverlay(h,true);
     $('go').addEventListener('click',start);
-    $('allgames').addEventListener('click',goHome);
     if($('menuhelp'))$('menuhelp').addEventListener('click',function(){openSheet('sol');});
     renderPanels();syncBack();
   }
@@ -688,8 +694,8 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
     $('again').addEventListener('click',start);$('tomenu').addEventListener('click',showMenu);
     renderPanels();syncBack();
   }
-  function syncBack(){if(!MOBILE)return;T(function(t){if(!t.BackButton)return;var show=true;if(show)t.BackButton.show();else t.BackButton.hide();});}
-  if(MOBILE)T(function(t){if(t.BackButton)t.BackButton.onClick(function(){if(sheetOpen)closeSheet();else if(state==='play')pauseGame();else if(state==='pause')resumeGame();else goHome();});});
+  function syncBack(){if(!MOBILE)return;T(function(t){if(!t.BackButton)return;var show=sheetOpen||state==='play'||state==='pause';if(show)t.BackButton.show();else t.BackButton.hide();});}
+  if(MOBILE)T(function(t){if(t.BackButton)t.BackButton.onClick(function(){if(sheetOpen)closeSheet();else if(state==='play')pauseGame();else if(state==='pause')resumeGame();});});
 
   document.addEventListener('keydown',function(e){
     var k=e.key,isP=k==='p'||k==='P'||k==='з'||k==='З';
@@ -709,7 +715,7 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
     var st=$('stage'),box=$('fieldbox');if(!st||!box)return;
     if(MOBILE){var h=window.innerHeight;if(tg&&tg.viewportStableHeight)h=Math.max(300,tg.viewportStableHeight);document.documentElement.style.setProperty('--app-h',h+'px');}
     var a=GAME.aspect||1,sw=st.clientWidth,sh=st.clientHeight,w=sw,hh=w/a;
-    if(GAME.fluid&&MOBILE){a=clamp(sw/sh,.5,a);hh=w/a;}
+    if(GAME.fluid&&MOBILE){a=clamp(sw/sh,GAME.minAspect||.5,a);hh=w/a;}
     if(hh>sh){hh=sh;w=hh*a;}
     if(GAME.maxW&&w>GAME.maxW){w=GAME.maxW;hh=w/a;}
     w=Math.floor(Math.max(200,w));hh=Math.floor(Math.max(200/a,hh));
