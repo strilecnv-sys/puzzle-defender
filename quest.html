@@ -929,7 +929,7 @@ function buildLevel(id){
     L.ground(67,92).blk(70,7,'siem').blk(71,7,'idm').e('ram',78,10).e('phisher',86,10,{l:82,r:91}).frags(72,76,10);
     L.e('vplat',83,10,{w:2,y2:4,spd:50}).plat(85,90,3).frags(86,89,2).e('disk',90,2);
     L.e('audit',93,10,{to:101}).e('sign',91,10,{txt:'audit'}).crack(95,100,GROUND).frags(95,100,9).ground(101,132);
-    L.e('cp',104,10).solid(108,110,9,10).solid(111,113,7,10).solid(116,119,5,10).frags(116,119,4).e('phisher',118,4,{l:116,r:119});
+    L.e('cp',104,10).solid(108,110,9,10).solid(111,113,7,10).solid(116,119,5,10).solid(115,115,9,10).frags(116,119,4).e('phisher',118,4,{l:116,r:119});
     L.e('ram',127,10).frags(122,125,10).e('coffee',124,10).e('sign',121,10,{txt:'drop'}).plat(121,125,7);
     L.ground(136,160).arc(132,136,9,2).e('phisher',146,10,{l:140,r:152}).blk(142,7,'siem').plat(150,154,8).frags(150,154,7).e('ram',157,10);
     L.e('cp',161,10).arc(161,165,9,2).ground(165,191).e('ram',174,10).blk(168,7,'siem').frags(176,180,10).e('phisher',182,10,{l:178,r:184}).e('exit',187,10);
@@ -1959,6 +1959,13 @@ function startLevel(id,fromResume){
   playSong(def.song);
   T(function(t){if(t.enableClosingConfirmation)t.enableClosingConfirmation();});
 }
+function safeSpawnX(cx,ty){
+  var offs=[40,6,-26,-58,-90,72,104];
+  for(var i=0;i<offs.length;i++){var x=cx+offs[i],c0=Math.floor(x/TS),c1=Math.floor((x+17.99)/TS),ok=true;
+    for(var c=c0;c<=c1&&ok;c++){var g=false;for(var r=ty+1;r<=ty+3&&r<LV.h;r++){var t=LV.tile(c,r);if(isSolidCode(t)||t===2){g=true;break;}}if(!g)ok=false;}
+    if(ok&&!rectHitsSolid(x,(ty+1)*TS-30,18,30))return x;}
+  return cx+6;
+}
 function spawnLevel(){
   var def=getDef(RUN.id);
   LV=Lobj(def);ents=[];shots=[];hooks=[];caps=[];pulses=[];fx=[];projs=[];tempTiles={};fws=[];
@@ -1991,7 +1998,7 @@ function spawnLevel(){
   });
   // player at start or at checkpoint
   var sx=start.x+6,sy=(start.d.ty+1)*TS-30;
-  if(RUN.cp>=0){var c=ents.filter(function(e){return e.type==='cp'&&e.idx===RUN.cp;})[0];if(c){sx=c.x+40;sy=(c.d.ty+1)*TS-30;}}
+  if(RUN.cp>=0){var c=ents.filter(function(e){return e.type==='cp'&&e.idx===RUN.cp;})[0];if(c){sy=(c.d.ty+1)*TS-30;sx=safeSpawnX(c.x,c.d.ty);}}
   P={x:sx,y:sy,w:18,h:30,vx:0,vy:0,face:1,ground:false,coyote:0,jbuf:0,inv:1,hp:maxHP(),sol:null,res:null,cd:0,dead:false,deadT:0,run:0,plat:null,drop:0,shootT:0,squash:0,crackFall:false,landT:0,shieldT:0,shieldHit:{},springT:0,pamT:0,pamHit:{}};
   if(RUN.carry){P.sol=RUN.carry.sol;P.res=RUN.carry.res;RUN.carry=null;}
   cam.x=clamp(P.x-VW*.4,camMinX(),camMaxX());cam.y=camTargetY();
@@ -2145,7 +2152,7 @@ function die(k,fell){
 function afterDeath(){
   if(!vtMode)RUN.lives--;SAVE.lives=Math.max(0,RUN.lives);
   if(RUN.lives<=0){SAVE.lives=3;SAVE.resume=null;persist();gameOver();return;}
-  RUN.carry=null;saveResume();spawnLevel();state='play';
+  RUN.carry=null;saveResume();spawnLevel();state='play';P.inv=2.5;
   if(LV&&LV.boss&&RUN.bossResume>1){toast('Бой продолжается с фазы '+RUN.bossResume,'#affb33');try{refillBossBlocks(true);}catch(e){}}
   else toast(RUN.cp>=0?'Восстановлено из резервной копии':'Новая попытка','#affb33');
 }
