@@ -33,10 +33,10 @@ body{color:var(--fg);font-family:var(--font-body);font-size:15px;line-height:1.5
 h1{margin:0;font-family:var(--font-display);font-weight:700;font-size:22px;line-height:1.2;text-wrap:balance}
 .hello p{margin:0;color:var(--muted);font-size:14px}
 .games{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.card{display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;text-decoration:none;color:inherit;transition:transform .12s ease,border-color .2s ease}
 .card.wide{grid-column:1/-1}
 .card.wide .prev{aspect-ratio:320/110}
 .card.wide .t{font-size:17px}
+.card{display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden;text-decoration:none;color:inherit;transition:transform .12s ease,border-color .2s ease}
 .card:active{transform:scale(.97);border-color:var(--good)}
 .card:focus-visible{outline:2px solid var(--good);outline-offset:3px}
 .prev{display:block;aspect-ratio:160/110;background:linear-gradient(180deg,#0c1638,#0a1230);border-bottom:1px solid var(--line)}
@@ -84,10 +84,14 @@ footer a{color:var(--good);text-decoration:none;font-weight:700}
 .patrol{animation:patrol 3s ease-in-out infinite}
 @keyframes patrol{50%{transform:translateX(-14px)}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+.wrap{position:relative}
+#sndbtn{position:absolute;top:calc(var(--pt) + 14px);right:max(14px,env(safe-area-inset-right,0px));width:38px;height:38px;display:grid;place-items:center;background:var(--surface);border:1px solid var(--line);border-radius:8px;color:var(--fg);cursor:pointer;padding:0}
+#sndbtn[aria-pressed="true"]{color:var(--muted)}
 </style>
 </head>
 <body>
 <div class="wrap">
+  <button id="sndbtn" type="button" aria-pressed="false" aria-label="Выключить звук"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 6h3l4-3v10l-4-3H2z" fill="currentColor"/><path class="snd-w" d="M11 5.5a3.5 3.5 0 0 1 0 5M12.8 3.5a6 6 0 0 1 0 9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path class="snd-x" d="M11 6l4 4M15 6l-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" style="display:none"/></svg></button>
       <svg class="logo" role="img" aria-label="Puzzle Systems" viewBox="0 0 498 165" fill="none" xmlns="http://www.w3.org/2000/svg">
 <path d="M0.150005 132.408C0.150005 121.83 7.94225 113.36 18.5954 112.814C27.517 112.362 35.648 110.122 42.8003 104.495C59.7212 91.1501 60.8693 64.7995 45.0966 49.9679C38.189 43.4743 30.0203 40.2746 20.5717 39.8982C12.3466 39.5782 5.81538 36.0585 2.14512 28.4921C-1.33692 21.3398 -0.50876 14.3005 4.14024 7.78809C8.48808 1.70863 16.9015 -1.26522 24.4867 0.541676C32.053 2.34857 38.1137 8.63507 39.2995 15.9191C40.1653 21.1892 40.3347 26.6852 42.0474 31.6542C46.5459 44.7354 55.9568 52.697 69.5838 55.4074C72.9717 56.085 76.4914 56.1414 79.8982 56.7625C87.5022 58.1554 92.6029 62.7667 95.0121 69.9378C97.5531 77.5042 95.8403 84.393 90.2878 90.209C86.2223 94.4815 81.0463 96.0814 75.3621 96.1379C59.0436 96.3073 43.1956 108.579 40.2594 127.1C39.77 130.168 39.9017 133.349 39.2995 136.379C37.342 146.336 28.0252 153.281 18.2378 152.302C7.77285 151.248 0.150005 142.873 0.150005 132.408Z" fill="#FF8F0C"/>
 <path d="M19.5937 56.6497C30.5857 56.6497 39.1121 65.2137 39.0933 76.2622C39.0933 87.066 30.4352 95.743 19.6313 95.7618C8.75223 95.7806 0 87.0472 0 76.2057C0 65.2513 8.6393 56.6497 19.5937 56.6309V56.6497Z" fill="#AFFB33"/>
@@ -112,7 +116,7 @@ footer a{color:var(--good);text-decoration:none;font-weight:700}
         <span class="best" id="best-quest">Поверните телефон горизонтально</span>
       </span>
     </a>
-    <a class="card" href="echelon.html" data-game="echelon">
+        <a class="card" href="echelon.html" data-game="echelon">
       <span class="prev"><svg viewBox="0 0 160 110" aria-hidden="true"><path d="M-4 20H50V64H104V36H164" fill="none" stroke="#16245a" stroke-width="16" stroke-linejoin="round"/>
 <path d="M-4 20H50V64H104V36H164" fill="none" stroke="#22306a" stroke-width="1.5" stroke-dasharray="4 5"/>
 <rect x="24" y="36" width="15" height="15" rx="4" fill="#AFFB33"/><circle cx="31.5" cy="43.5" r="24" fill="#AFFB33" opacity=".07"/>
@@ -271,7 +275,6 @@ footer a{color:var(--good);text-decoration:none;font-weight:700}
     if(tgv('6.9'))try{tg.setHeaderColor('#0a1230');tg.setBackgroundColor('#0a1230');}catch(e){}
     if(tgv('7.10'))try{tg.setBottomBarColor('#0a1230');}catch(e){}
     if(tgv('6.1'))try{tg.BackButton.hide();}catch(e){}
-    if(tgv('8.0')){try{tg.unlockOrientation();}catch(e){}try{if(tg.isFullscreen)tg.exitFullscreen();}catch(e){}}
     if(tgv('6.2'))try{tg.disableClosingConfirmation();}catch(e){}
     try{var u=tg.initDataUnsafe&&tg.initDataUnsafe.user;if(u&&u.first_name)document.getElementById('hi').textContent=u.first_name+', выберите игру';}catch(e){}
   }
@@ -281,9 +284,10 @@ footer a{color:var(--good);text-decoration:none;font-weight:700}
   function show(key,txt){var el=document.getElementById('best-'+key);if(el)el.textContent=txt;}
   var KEYS={defender:'pd-best',match:'pmatch-best',blast:'pblast2-best',zuma:'pzuma-best',snake:'psnake2-best','2048':'p2048-best',breakout:'pbreak-best',ciso:'pciso-best',galaxy:'pgalaxy-best',minesweeper:'pmines-best','phish-or-not':'pphish-best',ricochet:'pricochet-best',runner:'prunner-best'};
   Object.keys(KEYS).forEach(function(g){var v=get(KEYS[g]);if(v)show(g,'Рекорд: '+v);});
+
+  try{var qs=JSON.parse(localStorage.getItem('pquest-save-v1')||'null');if(qs&&qs.levels){var qd=0;for(var lk in qs.levels)if(qs.levels[lk]&&qs.levels[lk].done)qd++;if(qd)show('quest','Пройдено уровней: '+qd+' · играется горизонтально');}}catch(e){}
   var stars=0;
   try{for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(k&&k.indexOf('ectg-')===0)stars=Math.max(stars,get(k));}}catch(e){}
-  try{var qs=JSON.parse(localStorage.getItem('pquest-save-v1')||'null');if(qs&&qs.levels){var qd=0;for(var lk in qs.levels)if(qs.levels[lk]&&qs.levels[lk].done)qd++;if(qd)show('quest','Пройдено уровней: '+qd+' · играется горизонтально');}}catch(e){}
   if(stars){var s='';for(var j=0;j<3;j++)s+=j<stars?'★':'☆';show('echelon',s);}
   if(tgv('6.9')&&tg.CloudStorage){
     try{tg.CloudStorage.getItem('pd_best',function(err,v){if(!err&&+v>get('pd-best'))show('defender','Рекорд: '+(+v));});}catch(e){}
@@ -296,6 +300,41 @@ footer a{color:var(--good);text-decoration:none;font-weight:700}
     if(inTg){e.preventDefault();try{tg.openLink(this.href);}catch(x){}}
   });
   window.addEventListener('pageshow',function(e){if(e.persisted)location.reload();});
+})();
+</script>
+<script>
+/* menu sound: synthesized UI sounds, shared mute setting with the games (psnd-muted) */
+(function(){
+  var ac=null,out=null,muted=false,last={};
+  try{muted=localStorage.getItem('psnd-muted')==='1';}catch(e){}
+  function init(){try{if(!ac){var A=window.AudioContext||window.webkitAudioContext;if(!A)return;ac=new A();out=ac.createGain();out.gain.value=.5;out.connect(ac.destination);}if(ac.state==='suspended')ac.resume();}catch(e){}}
+  function tone(f,d,type,vol,to,delay){var t=ac.currentTime+(delay||0),o=ac.createOscillator(),g=ac.createGain();o.type=type;o.frequency.setValueAtTime(f,t);if(to)o.frequency.exponentialRampToValueAtTime(to,t+d);g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+.006);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(g);g.connect(out);o.start(t);o.stop(t+d+.03);}
+  var P={
+    hover:function(n){var f=[523,587,659,698,784,880,988,1047][(n||0)%8];tone(f,.05,'triangle',.03);},
+    open:function(){tone(523,.07,'square',.05);tone(784,.08,'square',.05,null,.06);tone(1047,.16,'triangle',.06,null,.12);},
+    link:function(){tone(880,.05,'triangle',.05);tone(1175,.09,'triangle',.05,null,.05);},
+    on:function(){tone(659,.07,'triangle',.06);tone(988,.12,'triangle',.06,null,.07);}
+  };
+  var GAP={hover:.04};
+  function play(n,a){if(muted||!ac||ac.state!=='running')return;var now=ac.currentTime;if(GAP[n]&&last[n]!=null&&now-last[n]<GAP[n])return;last[n]=now;try{P[n](a);}catch(e){}}
+  function setBtn(){var b=document.getElementById('sndbtn');if(!b)return;b.setAttribute('aria-pressed',muted?'true':'false');b.setAttribute('aria-label',muted?'Включить звук':'Выключить звук');b.title=muted?'Включить звук (M)':'Выключить звук (M)';
+    var w=b.querySelector('.snd-w'),x=b.querySelector('.snd-x');if(w)w.style.display=muted?'none':'';if(x)x.style.display=muted?'':'none';var l=b.querySelector('.snd-l');if(l)l.textContent=muted?'Звук выкл':'Звук вкл';}
+  function toggle(){muted=!muted;try{localStorage.setItem('psnd-muted',muted?'1':'0');}catch(e){}setBtn();if(!muted){init();setTimeout(function(){play('on');},30);}}
+  ['pointerdown','touchstart','keydown'].forEach(function(ev){document.addEventListener(ev,init,{capture:true,passive:true});});
+  document.addEventListener('keydown',function(e){if(e.key==='m'||e.key==='M'||e.key==='ь'||e.key==='Ь')toggle();});
+  var b=document.getElementById('sndbtn');if(b)b.addEventListener('click',function(e){e.preventDefault();init();toggle();});
+  setBtn();
+  var cards=document.querySelectorAll('.card');
+  Array.prototype.forEach.call(cards,function(c,i){
+    c.addEventListener('pointerenter',function(e){if(e.pointerType==='mouse')play('hover',i);});
+    c.addEventListener('focus',function(){play('hover',i);});
+    c.addEventListener('click',function(e){
+      if(muted||e.defaultPrevented||e.metaKey||e.ctrlKey||e.shiftKey||e.button)return;
+      init();if(!ac||ac.state!=='running')return;
+      e.preventDefault();play('open');var href=c.href;setTimeout(function(){location.href=href;},180);
+    });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('a.site'),function(a){a.addEventListener('click',function(){play('link');});});
 })();
 </script>
 </body>
