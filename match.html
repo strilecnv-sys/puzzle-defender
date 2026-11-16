@@ -147,10 +147,13 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
     var ac=null,out=null,nbuf=null,muted=false,last={};
     try{muted=localStorage.getItem('psnd-muted')==='1';}catch(e){}
     var GAP={zap:.09,tap:.03,merge:.04,match:.06,pop:.05,reveal:.03,swipe:.08,shoot:.11,pew:.045,tick:.035,hit:.04,brick:.03,wall:.06,kill:.03,dive:.45,select:.05,paddle:.04};
+    var _sil=null;function iosPlay(){try{if(navigator.audioSession&&navigator.audioSession.type!=='playback')navigator.audioSession.type='playback';}catch(e){}if(muted)return;try{if(!_sil){_sil=document.createElement('audio');_sil.setAttribute('playsinline','');_sil.setAttribute('x-webkit-airplay','deny');_sil.loop=true;_sil.preload='auto';_sil.src='data:audio/wav;base64,UklGRkQDAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YSADAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgA==';}if(_sil.paused){var p=_sil.play();if(p&&p.catch)p.catch(function(){});}}catch(e){}}
+document.addEventListener('visibilitychange',function(){if(document.hidden&&_sil)try{_sil.pause();}catch(e){}});
     function init(){
+      iosPlay();
       try{
         if(!ac){var A=window.AudioContext||window.webkitAudioContext;if(!A)return;ac=new A();out=ac.createGain();out.gain.value=.55;out.connect(ac.destination);}
-        if(ac.state==='suspended')ac.resume();
+        if(!ac._prim){ac._prim=1;try{var bb=ac.createBuffer(1,1,22050),bs=ac.createBufferSource();bs.buffer=bb;bs.connect(ac.destination);bs.start(0);}catch(e){}}if(ac.state!=='running'&&!document.hidden){var rp=ac.resume();if(rp&&rp.catch)rp.catch(function(){});}
       }catch(e){}
     }
     function tone(f,d,type,vol,to,delay){
@@ -221,8 +224,8 @@ button{-webkit-tap-highlight-color:transparent;touch-action:manipulation}
       var w=b.querySelector('.snd-w');if(w)w.style.display=muted?'none':'';var x=b.querySelector('.snd-x');if(x)x.style.display=muted?'':'none';
       var l=b.querySelector('.snd-l');if(l)l.textContent=muted?'Звук выкл · M':'Звук вкл · M';
     }
-    function toggle(){muted=!muted;try{localStorage.setItem('psnd-muted',muted?'1':'0');}catch(e){}setBtn();if(!muted){init();play('select');}}
-    ['pointerdown','touchstart','keydown'].forEach(function(ev){document.addEventListener(ev,init,{capture:true,passive:true});});
+    function toggle(){muted=!muted;if(muted&&_sil)try{_sil.pause();}catch(e){}try{localStorage.setItem('psnd-muted',muted?'1':'0');}catch(e){}setBtn();if(!muted){init();play('select');}}
+    ['pointerdown','touchstart','touchend','pointerup','click','keydown'].forEach(function(ev){document.addEventListener(ev,function(){if(!document.hidden)init();},{capture:true,passive:true});});
     document.addEventListener('keydown',function(e){var k=e.key;if(k==='m'||k==='M'||k==='ь'||k==='Ь'){if(e.target&&/INPUT|TEXTAREA/.test(e.target.tagName))return;toggle();}});
     document.addEventListener('DOMContentLoaded',setBtn);
     setTimeout(function(){setBtn();var b=document.getElementById('sndbtn');if(b)b.addEventListener('click',function(e){e.stopPropagation();init();toggle();b.blur();});},0);
